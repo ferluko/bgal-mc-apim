@@ -1,0 +1,107 @@
+# Indice estrategico - Reingenieria de plataforma OpenShift
+
+- 1. Contexto estrategico y proposito del documento
+  - 1.1 Objetivo del documento estrategico
+  - 1.2 Objetivo de la reingenieria de plataforma
+  - 1.3 Alcance tecnico y organizacional
+  - 1.4 Audiencia y decisiones que habilita el documento
+  - 1.5 Criterios de exito y principios rectores
+- 2\. Contexto de negocio, continuidad y regulacion
+  - 2.1 Criticidad de OpenShift para el negocio bancario
+  - 2.2 Requisitos regulatorios y de ciberseguridad
+  - 2.3 Restricciones operativas y de continuidad
+  - 2.4 Drivers estrategicos 2026-2027
+- 3\. Estado actual de la plataforma OpenShift
+  - 3.1 Topologia actual y capacidad instalada
+  - 3.2 Modelo operativo (dia 0, dia 1, dia 2)
+  - 3.3 Networking, ingress/egress y exposicion de servicios
+  - 3.4 Gestion de APIs y estado de APIM
+  - 3.5 Almacenamiento y servicios de datos
+  - 3.6 Seguridad actual (IAM/RBAC, secretos, cifrado, politicas)
+  - 3.7 Observabilidad y monitoreo actual
+  - 3.8 Costos operativos y de licenciamiento actuales
+- 4\. Diagnostico de problemas estructurales y deuda tecnica
+  - 4.1 Riesgo sistemico y blast radius
+  - 4.2 Limites de escalabilidad y elasticidad
+  - 4.3 Complejidad operativa y tareas manuales
+  - 4.4 Brechas de resiliencia y recuperacion ante desastres
+  - 4.5 Brechas de observabilidad y trazabilidad end-to-end
+  - 4.6 Brechas de seguridad y gobierno tecnico
+  - 4.7 Complejidad heredada (legacy) y friccion para equipos de desarrollo
+- 5\. Principios de arquitectura y criterios de diseno objetivo
+  - 5.1 Estandarizacion y automatizacion por defecto
+  - 5.2 Escalabilidad horizontal y elasticidad
+  - 5.3 Resiliencia multicluster y alta disponibilidad
+  - 5.4 Seguridad by design y zero trust
+  - 5.5 Observabilidad integral y operabilidad
+  - 5.6 Portabilidad, desacople y minimizacion de vendor lock-in
+  - 5.7 Simplicidad operativa y reduccion de complejidad tecnica
+- 6\. Alternativas tecnologicas evaluadas
+  - 6.1 Marco de evaluacion y criterios comparativos
+  - 6.2 Alternativas de API Management y API Gateway
+  - 6.3 Alternativas de Service Mesh para trafico este-oeste
+  - 6.4 Alternativas de networking y service discovery
+  - 6.5 Alternativas de observabilidad (metricas, logs, trazas, eBPF)
+  - 6.6 Alternativas de gestion de secretos e identidad
+  - 6.7 Alternativas de operacion multicluster y gobierno de flota
+  - 6.8 Evaluacion de trade-offs (tecnicos, operativos, economicos, riesgo)
+  - 6.9 Recomendacion tecnologica por dominio
+- 7\. Arquitectura objetivo de plataforma
+  - 7.1 Modelo multicluster objetivo y segmentacion de dominios
+  - 7.2 Patron norte-sur (ingreso, exposicion y gobierno de APIs)
+  - 7.3 Patron este-oeste (malla de servicios y seguridad de comunicacion)
+  - 7.4 Arquitectura de ingress/egress y DNS global
+  - 7.5 Modelo de seguridad integral (IAM/RBAC, secretos, cifrado, politicas)
+  - 7.6 Observabilidad federada multicluster
+  - 7.7 Modelo operativo GitOps + IaC
+  - 7.8 Patrones de resiliencia, failover y continuidad de servicio
+- 8\. Estrategia de portabilidad y evolucion a nube
+  - 8.1 Estrategia hibrida on-premise + cloud
+  - 8.2 Criterios de elegibilidad y priorizacion de workloads
+  - 8.3 Enfoque de migracion progresiva con minimo refactor
+  - 8.4 Interoperabilidad entre plataformas y entornos
+  - 8.5 Dependencias criticas para adopcion cloud
+  - 8.6 Estrategia de salida y reemplazabilidad tecnologica
+- 9\. Modelo operativo objetivo y experiencia de desarrollo
+  - 9.1 Operating model de plataforma (roles, ownership, capacidades)
+  - 9.2 Self-service y automatizacion de provision
+  - 9.3 Framework tecnologico estandarizado para equipos
+  - 9.4 Practicas de entrega segura (CI/CD, controles, gobernanza)
+  - 9.5 Gestion de capacidad, SLO/SLA y operacion continua
+  - 9.6 Mejora de developer experience y productividad
+- 10\. Seguridad, ciberseguridad y cumplimiento continuo
+  - 10.1 Gobierno de identidades y accesos multicluster
+  - 10.2 Gestion de secretos y credenciales
+  - 10.3 Hardening de plataforma y seguridad de red
+  - 10.4 Trazabilidad, auditoria y evidencias regulatorias
+  - 10.5 Gestion de vulnerabilidades y seguridad de cadena de suministro
+- 11\. Observabilidad integral y confiabilidad de plataforma
+  - 11.1 Arquitectura de telemetria (metricas, logs, trazas, eventos)
+  - 11.2 Observabilidad de red y servicios (incluyendo eBPF)
+  - 11.3 Monitoreo de experiencia de aplicacion y dependencias
+  - 11.4 Alertado, respuesta a incidentes y postmortems
+  - 11.5 Indicadores de salud tecnica por cluster y por dominio
+- 12\. Caso economico, costos y estrategia de proveedores
+  - 12.1 Linea base de costos (infraestructura, operacion, licencias)
+  - 12.2 Evaluacion economica de alternativas tecnologicas
+  - 12.3 Modelo FinOps para la plataforma
+  - 12.4 Estrategia de negociacion y gestion de vendors
+  - 12.5 Plan de reduccion de vendor lock-in
+- 13\. Roadmap de iniciativas y plan de implementacion
+  - 13.1 Fases de implementacion (corto, medio y largo plazo)
+  - 13.2 Iniciativas priorizadas por dominio tecnologico
+  - 13.3 Dependencias, precondiciones y secuenciamiento
+  - 13.4 Plan de transicion de APIs y workloads
+  - 13.5 Hitos, entregables y criterios de avance
+- 14\. Riesgos, mitigaciones y plan de contingencia
+  - 14.1 Riesgos tecnicos de arquitectura y migracion
+  - 14.2 Riesgos operativos y de continuidad del negocio
+  - 14.3 Riesgos de seguridad y cumplimiento
+  - 14.4 Riesgos de plazo, capacidad y recursos
+  - 14.5 Estrategias de mitigacion y fallback
+  - 14.6 Riesgo residual y criterios de aceptacion
+- 15\. Gobierno de ejecucion y seguimiento estrategico
+  - 15.1 Modelo de gobernanza de transformacion
+  - 15.2 KPIs y metricas de exito de la reingenieria
+  - 15.3 Cadencia de seguimiento ejecutivo y tecnico
+  - 15.4 Mecanismos de ajuste del roadmap y mejora continua
