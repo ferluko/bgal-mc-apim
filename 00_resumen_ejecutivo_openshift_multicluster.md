@@ -1,31 +1,3 @@
----
-ESTRUCTURA GENERAL
-
-OBJETIVO DEL DOCUMENTO
-
-El objetivo del presente documento es describir la situación actual del Banco Galicia en el uso y operación de la plataforma OpenShift. Mediante este análisis se identifican una serie de definiciones relacionadas a la evolución de esta tecnología y soportadas sobre las pruebas realizadas por el equipo en la investigación y desarrollo de nuevos paradigmas de uso y ejecución de microservicios. Como resultado final se detalla un plan de alto nivel de ejecución de iniciativas que permitirán alcanzar el objetivo final.
-
-ALCANCE Y OBJETIVO
-
-La reingeniería de nuestra plataforma OpenShift (OCP) tiene como objetivo rediseñar, modernizar y optimizar la arquitectura, los componentes y los procesos operativos que sostienen la estructura de contenedores del Banco Galicia. Esta iniciativa busca asegurar la escalabilidad futura para cubrir las necesidades de la organización, soportando el crecimiento de cargas críticas, los modelos multicluster y los requisitos de disponibilidad y resiliencia exigidos por la industria financiera.
-
-El objetivo principal es evolucionar la plataforma desde su estado actual hacia un modelo que garantice 7 aspectos:
-
-Mayor eficiencia operativa mediante automatización, estandarización y uso de un stack de tecnologías que construyan un framework.
-
-Escalabilidad y elasticidad para soportar múltiples dominios de negocio y picos de transaccionalidad/demanda.
-
-Alta disponibilidad y resiliencia mediante topologías multicluster y prácticas estándares de mercado que minimicen el impacto cruzado de fallas.
-
-Reducir la complejidad técnica y eliminar componentes legacy sin evolución y con proyección de tecnologías fuera de soporte.
-
-Mejorar la experiencia del desarrollo habilitando esquemas de seguridad y comunicación más controlados que permitan darle mejor trazabilidad al consumo de servicios internos como externos.
-
-Fortalecer la postura de ciberseguridad bajo estándares de la industria bancaria.
-
-Implementar capacidades de observabilidad integral para una operación más proactiva.
----
-
 ## 1. Resumen ejecutivo multicluster
 
 La transformación prioritaria de plataforma no es el reemplazo puntual de APIM, sino la evolución desde un esquema monolítico hacia una arquitectura multicluster con gobierno central y operación desacoplada por dominios. APIM se utiliza como caso modelador para validar decisiones de red, seguridad, resiliencia y operación, que luego se extienden al resto de OpenShift. [2][34]
