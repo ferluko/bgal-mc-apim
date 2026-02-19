@@ -1,250 +1,274 @@
-## 1. Resumen ejecutivo multicluster
+# 1. Resumen ejecutivo multicluster
 
-La transformación prioritaria de plataforma no es el reemplazo puntual de APIM, sino la evolución desde un esquema monolítico hacia una arquitectura multicluster con gobierno central y operación desacoplada por dominios. APIM se utiliza como caso modelador para validar decisiones de red, seguridad, resiliencia y operación, que luego se extienden al resto de OpenShift. [2][34]
+La transformación prioritaria de plataforma no es un reemplazo puntual de APIM, sino la evolución desde un esquema monolítico a una arquitectura multicluster gobernada por dominios. APIM sigue siendo un frente relevante, pero su análisis se integra ahora en un marco transversal de decisiones por capacidad (red, seguridad, operación, observabilidad y continuidad), evitando que un único producto condicione toda la arquitectura objetivo. [2][25][34]
 
-La situación actual concentra riesgo sistémico: un cluster productivo de gran escala soporta cargas críticas de múltiples líneas de negocio, con alto volumen transaccional y fuerte dependencia de procesos manuales para red, DNS, certificados, sincronización intersitio y continuidad. Este diseño amplifica blast radius, extiende ventanas de mantenimiento y limita la elasticidad real. [3][11][13]
+El estado actual mantiene riesgo sistémico: un cluster productivo de gran escala concentra cargas críticas y opera con alta dependencia de tickets, tareas manuales e integraciones interequipos para red, DNS, certificados, continuidad y cambios operativos. Esta combinación amplifica blast radius, restringe elasticidad real y estresa ventanas operativas. [3][4][11][13]
 
-La estrategia objetivo define una flota de clusters con responsabilidades claras, segmentación por criticidad y tipo de servicio, patrones diferenciados para tráfico north-south y east-west, y un modelo operativo GitOps + IaC para ciclo day 0/day 1/day 2. El beneficio esperado es reducir impacto cruzado, mejorar continuidad operativa y sostener crecimiento sin incrementar proporcionalmente la complejidad. [34][40][44]
+La arquitectura objetivo define una flota segmentada por criticidad y función, con patrón diferenciado north-south vs east-west, gobierno central de flota y operación day 0/day 1/day 2 declarativa mediante GitOps + IaC + perfiles de cluster versionados. El objetivo es escalar con menor impacto cruzado, reducir drift y sostener continuidad bancaria con mayor previsibilidad. [31][34][40][44]
 
-## 2. Situación actual y brechas estructurales
+## 1.1 Objetivos de reingenieria (marco comun)
 
-### 2.1 Topología y capacidad (as-is)
+Marco alineado con `02_multi-cluster/01_contexto_proposito/1.2_objetivo_de_la_reingenieria_de_plataforma.md`:
 
-- Cluster OpenShift monolítico de referencia: mas de 100 nodos, mas de 10.000 pods y mas de 600 namespaces. [3]
-- Volumen transaccional aproximado: ~8 mil millones de requests/mes, con predominio east-west (~7,5B) sobre north-south (~500M). [3][6]
-- Topología stretch entre Plaza (PGA) y Matriz (CMZ), con contingencia APIM en esquema activo-standby. [3][14]
-- Alta densidad de exposición en capa de ingreso y APIM: reportes de múltiples ingress controllers y ~2.200 APIs productivas. [3][6]
+1. Escalabilidad y segmentacion.
+2. Resiliencia y continuidad de negocio.
+3. Seguridad integral.
+4. Observabilidad y trazabilidad end-to-end.
+5. Gobernanza y automatizacion operativa.
+6. Portabilidad de workloads.
+7. Preparacion para migracion a nube.
+8. Minimizacion de vendor lock-in.
 
-### 2.2 Limitaciones técnicas prioritarias
+## 2. Situacion actual y brechas estructurales
+
+### 2.1 Topologia y capacidad (as-is)
+
+- Cluster productivo principal (`PAAS-PRDPG`) con orden de magnitud ~100 nodos, >10.000 pods y >600 namespaces. [3]
+- Cluster productivo pasivo (`PAAS-PRDMZ`) en esquema DR/standby, con sincronizacion intersitio aun sensible a procesos manuales/pipeline. [3][14]
+- Alta densidad en capa de exposicion: ~2.200 APIs y multiples ingress controllers sobre el entorno actual. [3][6]
+- Volumen transaccional aproximado de referencia: ~8 mil millones de requests/mes, con predominio east-west (~7,5B) sobre north-south (~500M). [3][6]
+
+### 2.2 Limitaciones tecnicas prioritarias
 
 #### Modelo operativo
 
-- Alta manualidad en tareas recurrentes: alta/modificación de VIPs, DNS, certificados, sincronización entre sitios, DR y cambios de red. [4][13]
-- Dependencia de tickets y coordinación interequipos para cambios críticos, con variabilidad en tiempos de ejecución. [4][13]
-- Coexistencia de automatización parcial con procedimientos manuales en procesos de alto impacto. [4][13]
+- Day 0 y Day 1 mantienen dependencia de tickets para prerequisitos de red, VIPs y DNS; Day 2 no esta completamente estandarizado y persiste manualidad en procesos criticos. [4][13]
+- Persisten cuellos de coordinacion entre plataforma, tecnologia y seguridad para cambios clave de despliegue/migracion. [4][13]
+- Ventanas de upgrade con baja elasticidad de calendario (incluyendo fines de semana) y necesidad explicita de guardias fuera de horario habil. [14][13]
+- Gobierno tecnico incompleto de metadata (criticidad, patron de HA, dependencias externas), que limita automatizacion segura y continuidad por dominio. [8][16]
 
-#### Escalabilidad
+#### Escalabilidad, red y datos
 
-- Unidad principal de escalado concentrada en un cluster monolítico, con sobrecompromiso reportado en partes del entorno. [12]
-- Limitaciones operativas de APIM actual para crecimiento de rutas/APIs y recargas no dinámicas. [6][12]
-- Hair-pinning en tráfico interno que agrega latencia y penaliza escalabilidad transaccional. [5][12]
+- Escalado principal aun concentrado en el monolito, con overcommit reportado en capacidad. [12]
+- Hair-pinning en recorridos internos agrega latencia y complejidad operativa en el caso dominante east-west. [5][12]
+- APIM actual presenta limites para crecimiento de rutas/APIs y procesos no plenamente dinamicos/declarativos. [6][12]
+- Persisten workloads con PV local sin estrategia uniforme de desacople; esto frena portabilidad real entre clusters. [7][12]
+- Se reporta drift/consistencia inestable en bases externas de APIM (Oracle/Redis) bajo replicacion/conmutacion, con impacto potencial en disponibilidad efectiva. [6]
 
-#### Impacto cruzado (blast radius)
+#### Seguridad y gobernanza
 
-- La falla de capacidad, red, storage o configuración puede propagarse en forma transversal a múltiples dominios. [11]
-- Dependencias compartidas (balanceo, DNS, storage, identidad, APIM) elevan el impacto simultáneo en canales e integraciones. [11]
-- Mayor complejidad de contención durante incidentes por concentración de cargas críticas en la misma base de plataforma. [11][13]
+- Trazabilidad parcial de cambios en objetos de seguridad (RBAC, secretos, politicas) y dependencia de ejecucion manual en varios dominios. [8][16]
+- Falta de taxonomia minima obligatoria para clasificar workloads y aplicar controles por criticidad, HA y dependencias. [8][16]
+- Enforcement parcial de controles automatizados cuando el tagging tecnico es incompleto/inconsistente. [8][16]
 
-#### Mantenimiento, lifecycle y ventanas
+#### Observabilidad y evidencia operativa
 
-- Ventanas de mantenimiento extensas por tamaño de cluster y secuencias de actualización por etapas. [12]
-- Riesgo de deriva de configuración intersitio cuando la sincronización no es completamente declarativa. [13]
-- Presión de ciclo de vida: OpenShift en rango 4.15-4.16 y objetivo de evolución a 4.20.x; 3scale con EOL en 2027. [6][46]
+- Cobertura incompleta de trazabilidad end-to-end en flujos que atraviesan borde, ingress, APIM y servicios internos. [15]
+- Incidentes recurrentes de alto volumen (ej. OFD) sin atribucion causal concluyente por falta de evidencia tecnica correlada. [15][5]
+- Necesidad de observabilidad de red no intrusiva para reconstruir path real de requests y reducir MTTR. [15][60]
 
-### 2.3 Diagrama topológico de referencia actual
+### 2.3 Diagrama topologico de referencia actual
 
-#### Datacenter
+#### Datacenter y perimetro
 
-- Dos sitios principales (Plaza y Matriz) con red extendida. [3][5]
-- Capa perimetral con F5/Fortinet y componentes de seguridad de borde. [5]
+- Dos sitios principales (Plaza y Matriz) con red extendida y dependencias fuertes de componentes corporativos de red/seguridad. [3][5]
+- Capa perimetral con Fortinet/WAF/F5 y controles de borde antes del ingreso a OCP/APIM. [5]
 
 #### Flujos
 
-- North-south: Internet/partners/core/legacy -> DMZ -> ingreso OpenShift/APIM -> servicios. [5][6]
-- East-west: en varios recorridos internos el tráfico sale y reingresa por balanceadores externos para resolver autorización/ruteo. [5][6]
+- Cadena north-south observada: Fortinet -> WAF -> F5 DMZ -> Proxy Reversos -> F5 LAN -> ingress OCP -> APIM -> servicio. [5]
+- Egress concentrado en IP publica unica con validaciones corporativas por origen/destino en firewall. [5]
+- East-west con recorridos que salen y reingresan por balanceadores externos en parte del path, generando overhead operativo. [5][6]
 
-#### Hardware y componentes críticos
+#### Componentes criticos y evolucion
 
-- Dependencias de storage compartido y componentes transversales con efecto banco-wide ante falla. [7][11]
-- Integración fuerte con componentes de red corporativa (DNS, balanceo, certificados). [5][13]
-
-#### Versiones y evolución
-
-- Base actual en 4.15-4.16, con objetivo de evolución de plataforma y CNI hacia 4.20.x. [42][46]
-- Dependencias de compatibilidad (incluyendo storage) condicionan secuencia de upgrade. [7][46]
+- Storage compartido y dependencias transversales con potencial efecto banco-wide ante falla/degradacion. [7][11]
+- Base actual en OCP 4.16 con objetivo de evolucion a 4.20.x, condicionada por compatibilidades tecnicas y secuencia de upgrade. [42][46]
+- Presion de ciclo de vida: transicion del dominio APIM antes de EOL de 3scale (2027). [6][33]
 
 ## 3. Arquitectura objetivo multicluster
 
-### 3.1 Segmentación de dominios y tipología de clusters
+### 3.1 Segmentacion de dominios y tipologia de clusters
 
-El modelo objetivo propone segmentar por criticidad y función para reducir blast radius y desacoplar crecimiento: [34][20]
+El modelo objetivo segmenta por criticidad y funcion para reducir blast radius y desacoplar crecimiento: [34][20]
 
-- Clusters de negocio para cargas aplicativas por tribu/dominio. [34]
-- Cluster de servicios comunes para capacidades transversales (observabilidad, secretos, herramientas de plataforma). [34]
-- Clusters de gestión y gobierno para operación multicluster, políticas globales y ciclo de vida. [34]
-- Separación explícita entre servicios críticos y no críticos. [34]
+- Clusters de negocio para cargas aplicativas por dominio/tribu. [34]
+- Clusters de servicios comunes para capacidades transversales (observabilidad, secretos, tooling de plataforma). [34][39][55]
+- Clusters de gestion para gobierno de flota, politicas globales y lifecycle. [34][40]
+- Coexistencia controlada de perfiles de cluster para soportar madurez heterogenea con enforcement minimo comun. [31][34]
 
-Como referencia de escala, se plantea evolución desde el cluster monolítico hacia una flota cercana a 30 clusters totales, con 7-8 productivos según madurez del programa. [34][42]
+### 3.2 Control plane, data plane y perfiles de cluster
 
-### 3.2 Modelo de control plane y data plane
+- Gobierno multicluster central (hub-spoke) con control declarativo de politicas y ciclo de vida. [31][40]
+- Data planes distribuidos por cluster/sitio con autonomia operativa ante perdida temporal del control plane. [40]
+- Cluster profiles as code para baseline, guardrails y validacion day 0/day 1/day 2 segun criticidad/dominio. [31][40]
+- GitOps distribuido por dominios funcionales para escalar ownership sin perder trazabilidad. [40][48]
 
-- Gobierno central multicluster en topología hub-spoke (por ejemplo ACM), con políticas y ciclo de vida controlados desde repositorios versionados. [40][31]
-- Data planes distribuidos por cluster/sitio con autonomía operativa ante pérdida temporal de conectividad al control plane. [40]
-- Distribución de GitOps por dominios funcionales (infra, seguridad/RBAC, aplicaciones, middleware/APIs) para escalar ownership sin perder control. [40][48]
+### 3.3 Patrones de trafico objetivo
 
-### 3.3 Patrones de tráfico objetivo
+#### North-south (ingreso y exposicion)
 
-#### North-south (ingreso y exposición)
+- Arquitectura de tres capas: perimetro (DMZ), capa APIM/API Gateway robusta para gobierno L7 y capa de servicios internos. [35][26]
+- Aplicacion de politicas L7 (authn/authz, cuotas, versionado, auditoria y telemetria transaccional) sin trasladar esa carga al trafico interno. [35][26]
+- Seleccion de vendor abierta entre Gloo Gateway y Kong para north-south, con cierre por PoC, operabilidad y costo total. [26][32][33]
+- Coexistencia controlada por fases con plataforma actual (3scale) para evitar migracion big-bang. [26][33]
 
-- Arquitectura de tres capas: perímetro (DMZ), API Gateway para gobierno L7 y capa de servicios internos. [35]
-- Considera como north-south también consumo desde legacy/core hacia APIs alojadas en OpenShift. [35][26]
-- Capacidades esperadas: OAuth2/JWT, mTLS, rate limiting, cuotas, versionado, telemetría transaccional y auditoría. [35][26]
+#### East-west (comunicacion interna)
 
-#### East-west (comunicación interna)
-
-- Malla sidecarless para comunicación interna e intercluster. [36][27]
-- Decisión vigente: Cilium Mesh para dominio east-west multicluster. [36][33]
-- Beneficios esperados: eliminación de hair-pinning, menor latencia, menor complejidad de red, mejor troubleshooting y mayor aislamiento de fallas. [36]
-- Condición de adopción: pruebas obligatorias de pod churn cross-cluster antes de go-live. [36][41]
+- Malla sidecarless para conectividad interna/intercluster, enfocada en reducir saltos y latencia. [36][27]
+- Cilium se mantiene como opcion seleccionada/en evaluacion para dominio east-west multicluster, con validaciones tecnicas obligatorias. [27][33]
+- Condicion de adopcion: pruebas de pod churn cross-cluster y escenarios de falla reales antes de go-live. [36][41]
 
 ### 3.4 Ingress/egress, DNS global y balanceo
 
-- Ingreso estandarizado por entorno y dominio; egress con políticas explícitas y trazabilidad. [37]
-- DNS global con health checks para distribución de tráfico entre clusters. [37]
-- Automatización de actualizaciones DNS (por ejemplo external-dns) e integración con balanceo global (F5/Infoblox). [37][28]
-- Objetivo operativo: conmutación rápida entre sitios con mínima intervención manual. [37][41]
+- Ingreso estandarizado por dominio con trazabilidad de cambios y guardrails declarativos. [37][40]
+- Automatizacion DNS por fases (External DNS + integracion corporativa) para reducir manualidad y drift. [28][37]
+- F5 GTM como capacidad de evolucion cuando aplique; no condiciona el inicio de la transicion multicluster. [28]
+- Objetivo operativo: failover mas rapido y predecible entre sitios con minima intervencion manual. [37][41]
 
-### 3.5 Seguridad integral multicluster
+### 3.5 Seguridad integral y gobierno tecnico
 
-- IAM integrado con identidad corporativa y principio de mínimo privilegio. [38][54]
-- RBAC declarativo por repositorio, reconciliación continua y segregación de funciones. [38][54]
-- Migración desde credenciales estáticas hacia mecanismos con expiración y revocación (OAuth2/JWT + mTLS). [38][54]
-- Vault como backend de secretos con sincronización controlada en Kubernetes. [38][55]
-- Políticas de red por defecto deny, controles explícitos de comunicación y egress. [38][56]
+- IAM integrado con identidad corporativa, principio de minimo privilegio y segregacion de funciones. [38][54]
+- RBAC/politicas/secretos declarativos con reconciliacion continua y evidencia auditable. [38][40][54]
+- Migracion progresiva desde credenciales estaticas hacia identidad de workload (JWT/mTLS), con pilotos acotados y KPIs de adopcion. [30][38][54]
+- Taxonomia tecnica obligatoria de workloads y perfiles de cluster para enforcement consistente de controles de seguridad/continuidad. [8][16][31]
 
 ### 3.6 Observabilidad federada y confiabilidad
 
-- Federación de métricas, logs y trazas para lectura unificada cross-cluster. [39][59]
-- OpenTelemetry como patrón transversal y eBPF para visibilidad de red/mesh y mapeo de dependencias reales. [39][60]
-- Definición de SLI/SLO por servicio y dominio, con umbrales y ownership explícitos. [39][63]
-- Integración de alertado, incident response y postmortems en una misma disciplina operativa. [39][62]
+- Federacion de metricas, logs y trazas con lectura unificada cross-cluster. [39][59]
+- OpenTelemetry + eBPF como base para visibilidad de red/servicio y correlacion multi-capa. [39][60]
+- Recuperar evidencia operativa en el borde y trazabilidad de path end-to-end para incidentes de alto volumen. [15][60]
+- Definir SLI/SLO por dominio y tablero unico de salud tecnica para seguimiento ejecutivo. [39][63]
 
-### 3.7 Modelo operativo objetivo
+### 3.7 Datos, almacenamiento y portabilidad
 
-- GitOps + IaC como estándar de cambio para infraestructura, políticas y aplicaciones. [40][18]
-- Automatización day 0/day 1/day 2 para reducir tareas manuales recurrentes y drift. [40][49]
-- Self-service con templates de plataforma para provisión de entornos, onboarding técnico y despliegue con guardrails. [49][50]
-- Operating model de plataforma-producto con roles claros: Platform Engineering, Seguridad, Redes/Comunicaciones, SRE/DevOps y equipos de producto. [48][53]
+- Evolucion desde persistencia local no portable hacia estrategias de desacople (object storage/buckets) en workloads elegibles. [7][44]
+- Evaluar ODF compartido por dominio para reducir repeticion de stacks y complejidad operativa en flota. [7]
+- Inventario y remediacion de PVs por dominio como prerequisito de migracion segura entre clusters. [7][44]
 
-## 4. Decisiones arquitectónicas más relevantes (problema -> decisión -> beneficio)
+### 3.8 Modelo operativo objetivo
+
+- GitOps + IaC como estandar de cambio para infraestructura, politicas y aplicaciones. [18][40]
+- Automatizacion day 0/day 1/day 2 con controles de drift y validacion contra perfil esperado. [31][40][49]
+- Self-service de plataforma para provision de entornos/servicios sobre templates y guardrails preaprobados. [49][50]
+- Operating model plataforma-producto con ownership claro entre Platform Engineering, Seguridad, Redes/Comunicaciones, SRE/DevOps y equipos de producto. [48][53]
+
+## 4. Decisiones arquitectonicas mas relevantes (problema -> decision -> beneficio)
 
 | Problema estructural | Decisión arquitectónica | Beneficio esperado |
 | --- | --- | --- |
-| Concentración de riesgo en cluster único | Segmentación multicluster por dominio/criticidad | Reducción de blast radius y mejor continuidad [34][20] |
-| Hair-pinning y latencia en tráfico interno | Malla sidecarless east-west (Cilium Mesh) | Menor latencia y menor dependencia de red legacy [36][27] |
-| Mezcla de necesidades externas e internas en APIM | Separación north-south (API Gateway) vs east-west (mesh) | Gobierno L7 donde aporta valor, eficiencia en tráfico interno [35][26] |
-| Manualidad operativa y drift entre sitios | GitOps + IaC + control multicluster centralizado | Cambios auditables, repetibles y con rollback [40][18] |
-| Seguridad basada en credenciales estáticas | Identidad de workload, RBAC declarativo, Vault, mTLS | Mejor cumplimiento, revocación efectiva y trazabilidad [38][54][55] |
-| Observabilidad fragmentada | Observabilidad federada con OTel + eBPF | Diagnóstico end-to-end y reducción de MTTR [39][29][60] |
-| DR con alta intervención manual | DNS global + health checks + runbooks/drills + automatización progresiva | Mejor RTO efectivo y menor variabilidad operativa [41][37] |
+| Riesgo sistémico por cluster único | Segmentación multicluster por dominio/criticidad | Reducción de blast radius y mejor continuidad [34][20] |
+| Drift entre clusters/sitios | Perfilado declarativo de clusters (cluster profiles as code) | Menor variabilidad y gobierno operativo consistente [31][40] |
+| Hair-pinning y latencia en tráfico interno | Malla sidecarless east-west (Cilium) | Menor latencia y menor dependencia de rutas externas [27][36] |
+| Mezcla de objetivos L7 externos e internos | Separación north-south (APIM/API Gateway) vs east-west (mesh) | Gobierno L7 donde aporta valor y eficiencia interna [26][35] |
+| Cierre prematuro de vendor gateway | Evaluación abierta Gloo/Kong con coexistencia por fases | Menor riesgo técnico/comercial y mejor decisión final [32][33] |
+| Manualidad operativa en red/DNS | Automatización progresiva con External DNS + integración corporativa | Menor tiempo operativo y menor drift [28][37] |
+| Persistencia local con baja portabilidad | Migración selectiva a object storage y storage compartido por dominio | Mayor movilidad de cargas y menor bloqueo técnico [7][44] |
+| Seguridad con enforcement parcial | Taxonomía obligatoria + controles declarativos (IAM/RBAC/secretos/políticas) | Mejor cumplimiento y trazabilidad auditable [8][16][54] |
+| Observabilidad fragmentada | OTel + eBPF + correlación multi-capa end-to-end | Mejor diagnóstico, menor MTTR y decisiones basadas en evidencia [15][39][60] |
 
-## 5. Estrategia de evolución multicluster (detalle por fases)
+## 5. Estrategia de evolucion multicluster (detalle por fases)
 
 ### 5.1 Fase fundacional: habilitadores de plataforma
 
-Objetivo: establecer base común para ejecutar la migración sin incrementar riesgo. [44][40]
+Objetivo: establecer base comun para ejecutar la migracion sin incrementar riesgo. [40][44]
 
-- Definir baseline de seguridad, observabilidad y gobierno técnico por cluster. [18][38]
-- Formalizar repositorio de verdad para RBAC, políticas de red, configuración de ingreso/egreso y secretos. [40][54]
-- Alinear modelo day 0/day 1/day 2 con ownership y RACI por dominio. [48][40]
-- Preparar estrategia de versiones y dependencias para ruta de upgrade OCP hacia 4.20.x. [46][42]
+- Definir baseline de seguridad, observabilidad y gobierno tecnico por cluster. [18][38]
+- Definir catalogo de perfiles de cluster y proceso formal de evolucion/aprobacion por dominio. [31][40]
+- Formalizar repositorio de verdad para RBAC, politicas de red, ingreso/egreso y secretos. [40][54]
+- Alinear day 0/day 1/day 2 con ownership y RACI por dominio tecnico. [4][48]
+- Preparar estrategia de versiones/dependencias para ruta de upgrade OCP hacia 4.20.x. [42][46]
+- Levantar inventario de PVs y plan de remediacion para portabilidad de workloads stateful. [7][44]
 
-### 5.2 Fase de sharding de ingreso y desacople de flujos
+### 5.2 Fase de desacople de ingreso y transicion APIM
 
-Objetivo: desacoplar rutas y permitir transición gradual sin cortes masivos. [35][44]
+Objetivo: desacoplar rutas y habilitar migracion gradual sin cortes masivos. [35][44]
 
-- Separar puntos de ingreso por función durante transición (gestión OCP, rutas actuales, gateway interno, API management externo). [35]
-- Habilitar migración selectiva con VIPs/CNAMEs por proyecto, evitando switcheo total. [35][37]
-- Mantener coexistencia controlada entre modelo actual y destino, con validación automática para evitar drift. [40][44]
+- Separar puntos de ingreso por funcion y criticidad durante la transicion. [35]
+- Habilitar migracion selectiva con VIPs/CNAMEs por proyecto/dominio y rollback controlado. [35][37]
+- Operar coexistencia controlada entre APIM actual y capa objetivo de gateway north-south. [26][33]
+- Cerrar seleccion final Gloo/Kong con criterios integrales de seguridad, operabilidad y costo total. [26][32][33]
 
-### 5.3 Fase de segmentación operativa y gobierno
+### 5.3 Fase de segmentacion operativa y gobierno de flota
 
-Objetivo: pasar de operación centralizada por excepción a operación por dominios con guardrails. [34][40]
+Objetivo: pasar de operacion centralizada por excepcion a operacion por dominios con guardrails. [34][40]
 
-- Activar control plane central multicluster con data planes distribuidos. [34][40]
-- Estandarizar APIM/API Gateway como capacidad north-south multitenant por necesidad de dominio. [35][26]
-- Automatizar RBAC y políticas globales con reconciliación continua. [54][40]
-- Ejecutar upgrades por etapas (control plane/componentes core y luego pools de cómputo), con pruebas de riesgo sobre migraciones de red/CNI. [46][12]
-- Fortalecer continuidad con ejercicios DRP periódicos, runbooks y criterios de no-go-live. [41][14]
+- Activar control plane multicluster con data planes distribuidos. [34][40]
+- Automatizar politicas globales y reconciliacion continua por dominio. [40][54]
+- Integrar observabilidad federada para capacidad, performance, seguridad y continuidad. [39][59]
+- Ejecutar upgrades por etapas con validaciones de riesgo sobre red/CNI y componentes criticos. [12][46]
 
 ### 5.4 Fase de movimiento de proyectos y cargas
 
-Objetivo: redistribuir capacidad y reducir presión sobre el monolito sin refactor funcional prematuro. [44][52]
+Objetivo: redistribuir capacidad y reducir presion sobre el monolito sin refactor funcional prematuro. [44][52]
 
-- Identificar aplicaciones HA-ready como primera ola de migración. [44][43]
-- Aplicar enfoque lift-and-reshape por dominios y oleadas, con coexistencia temporal origen/destino. [44]
-- Reorganizar namespaces y cargas por criticidad/función para aislar impacto. [34][52]
-- Estandarizar templates de aplicación y pipelines de movimiento automatizado. [53][49]
-- Ejecutar switcheo progresivo de tráfico con rollback controlado. [44][37]
+- Priorizar workloads HA-ready como primera ola de migracion. [43][44]
+- Aplicar enfoque lift-and-reshape por oleadas, manteniendo coexistencia temporal origen/destino. [44]
+- Reorganizar namespaces/cargas por criticidad y dependencias para aislar impacto. [34][52]
+- Estandarizar templates y pipelines de movimiento automatizado. [49][53]
 
-### 5.5 Fase de consolidación de patrones de alta disponibilidad
+### 5.5 Fase de consolidacion de resiliencia
 
-Objetivo: estabilizar operación multicluster con capacidad de recuperación verificable. [41][20]
+Objetivo: estabilizar operacion multicluster con recuperacion verificable. [20][41]
 
-- Adoptar modelos activo-activo o activo-pasivo según criticidad y naturaleza del servicio. [41]
-- Integrar DNS global, balanceo y health checks multicapa para conmutación controlada. [37][41]
-- Definir RTO/RPO por dominio de negocio y validar con drills representativos. [41][52]
-- Asegurar recuperación de estado y datos para cargas stateful, no solo redeploy de manifiestos. [41][7]
+- Adoptar patrones activo-activo o activo-pasivo segun criticidad y soporte real del negocio/servicio. [20][34]
+- Consolidar DNS global, balanceo y health checks multicapa para conmutacion predecible. [37][41]
+- Definir RTO/RPO por dominio y validar periodicamente con drills representativos. [41][52]
+- Asegurar recuperacion de estado/datos para cargas stateful, no solo redeploy de manifiestos. [7][41]
 
-## 6. Topología target consolidada
+## 6. Topologia target consolidada
 
-### 6.1 Vista lógica
+### 6.1 Vista logica
 
-- Capa de gobierno multicluster (control plane) para políticas y ciclo de vida. [34][40]
-- Capa de ejecución distribuida (data planes) en clusters por dominio. [34]
-- Capa de ingreso north-south para exposición externa y canales/core/legacy. [35]
-- Capa de comunicación east-west para tráfico interno/intercluster. [36]
+- Capa de gobierno multicluster (control plane) para politicas y ciclo de vida. [34][40]
+- Capa de ejecucion distribuida (data planes) en clusters por dominio. [34]
+- Capa north-south para exposicion externa y consumo legacy/core. [35]
+- Capa east-west para comunicacion interna/intercluster y service discovery. [27][36]
 
 ### 6.2 Roles por tipo de cluster
 
-- **Clusters de negocio:** ejecución de servicios de dominio con SLO/SLA propios. [34][52]
-- **Clusters de servicios comunes:** observabilidad, secretos, componentes compartidos. [39][55]
-- **Clusters de gestión:** gobierno de flota, GitOps/IaC, políticas globales. [40][31]
-- **Clusters especializados:** casos de uso específicos con requisitos técnicos particulares. [34][42]
+- **Clusters de negocio:** ejecucion de servicios de dominio con SLO/SLA propios. [34][52]
+- **Clusters de servicios comunes:** observabilidad, secretos y componentes compartidos. [39][55]
+- **Clusters de gestion:** gobierno de flota, GitOps/IaC y politicas globales. [31][40]
+- **Clusters especializados:** casos de uso con requerimientos tecnicos particulares. [34][42]
 
-## 7. Plan de ejecución high-level
+## 7. Plan de ejecucion high-level
 
 ### 7.1 Horizonte 2026-2027
 
-- **Q1 2026:** cierre de definiciones de arquitectura objetivo y gobierno de ejecución. [1][34]
-- **Q2 2026:** implementación de habilitadores multicluster, POC de hardening/performance y validación de escenarios críticos. [44][36][33]
-- **Q3-Q4 2026:** migración progresiva por oleadas (dominios, namespaces, criticidad), con pilotos y expansión controlada. [44][34]
-- **Q4 2026:** consolidación operativa de la nueva topología para dominios priorizados. [34][41]
-- **2027:** cierre de transición del dominio APIM antes de EOL de 3scale. [6][33]
+- **Q1 2026:** cierre de arquitectura objetivo, taxonomia tecnica y modelo de gobierno de flota. [1][34][31]
+- **Q2 2026:** implementacion de habilitadores multicluster y PoC criticas (mesh, gateway, seguridad, observabilidad). [33][36][44]
+- **Q3-Q4 2026:** migracion progresiva por oleadas (dominios, namespaces, criticidad) con coexistencia controlada. [34][44]
+- **Q4 2026:** consolidacion operativa de topologia objetivo en dominios priorizados. [34][41]
+- **2027:** cierre de transicion APIM antes de EOL de 3scale, con vendor north-south ya definido y estabilizado. [6][33]
 
 ### 7.2 Entregables de control ejecutivo
 
-- Arquitectura detallada aprobada por dominio. [1][34]
-- Matriz de dependencias y secuenciamiento técnico. [44][31]
-- Criterios de avance/no-go-live por fase. [41][44]
-- Tablero de salud técnica por cluster y dominio. [63][39]
+- Arquitectura detallada aprobada por dominio y por capacidad. [1][34]
+- Catalogo de cluster profiles as code con guardrails minimos day 0/day 1/day 2. [31][40]
+- Matriz de dependencias y secuenciamiento tecnico de migracion. [31][44]
+- Criterios de avance/no-go-live por fase y dominio. [41][44]
+- Tablero de salud tecnica unificado por cluster/dominio. [39][63]
 - Plan integrado de riesgos, mitigaciones y contingencia. [14][41]
 
-## 8. Riesgos críticos y mitigaciones del programa multicluster
+## 8. Riesgos criticos y mitigaciones del programa multicluster
 
-**Riesgo 1: inestabilidad en patrones cross-cluster críticos**  
-Mitigación: pruebas obligatorias de pod churn cross-cluster en POC/staging/preproducción, más criterio de no-go-live si no hay estabilidad consistente. [36][41]
+**Riesgo 1: inestabilidad en patrones cross-cluster criticos**  
+Mitigacion: pruebas obligatorias de pod churn cross-cluster y escenarios de falla reales, con criterio de no-go-live. [36][41]
 
 **Riesgo 2: complejidad de upgrade de plataforma y red**  
-Mitigación: ejecución por etapas, validaciones técnicas previas por dominio, gestión explícita de dependencias de compatibilidad. [46][12]
+Mitigacion: ejecucion por etapas, validaciones tecnicas previas por dominio y gestion explicita de compatibilidades. [12][46]
 
-**Riesgo 3: deriva de configuración entre clusters/sitios**  
-Mitigación: baseline declarativo, reconciliación continua por GitOps y controles de drift como parte del monitoreo operativo. [40][18]
+**Riesgo 3: deriva de configuracion entre clusters/sitios**  
+Mitigacion: baseline declarativo + perfiles de cluster versionados + reconciliacion continua por GitOps. [31][40]
 
 **Riesgo 4: sobrecarga operativa durante coexistencia de modelos**  
-Mitigación: migración por oleadas, scope limitado por fase, automatización de tareas repetitivas y reforzamiento de runbooks. [44][13]
+Mitigacion: migracion por oleadas, scope acotado por fase, automatizacion de tareas repetitivas y runbooks reforzados. [13][44]
 
-**Riesgo 5: brechas de seguridad en transición de identidades/secretos**  
-Mitigación: plan de migración por dominio, separación de funciones, trazabilidad de cambios y eliminación gradual de credenciales estáticas. [38][54][55]
+**Riesgo 5: brechas de seguridad en transicion de identidades/secretos**  
+Mitigacion: migracion por dominio con pilotos acotados, segregacion de funciones, trazabilidad de cambios y retiro progresivo de credenciales estaticas. [30][38][54][55]
 
-**Riesgo 6: brechas de observabilidad en operación federada**  
-Mitigación: instrumentación por defecto en clusters nuevos, catálogo único de indicadores y correlación de señales de aplicación/plataforma/red. [39][59][60][63]
+**Riesgo 6: brechas de observabilidad y evidencia operativa en borde/path**  
+Mitigacion: instrumentacion por defecto en clusters nuevos, observabilidad de red no intrusiva y correlacion multi-capa de señales. [15][39][60][63]
 
-## 9. Conclusión
+**Riesgo 7: decision tardia o incompleta de API Gateway north-south**  
+Mitigacion: evaluacion abierta Gloo/Kong con criterios integrales, hitos de cierre y coexistencia controlada con 3scale. [26][32][33]
 
-La transformación multicluster es la decisión estructural central para sostener continuidad bancaria, escalar capacidades y reducir riesgo sistémico. El reemplazo de APIM es un frente relevante dentro de esa transformación, pero no su objetivo final. [34][20]
+## 9. Conclusion
 
-El éxito depende de ejecutar en secuencia: segmentación por dominios, automatización operativa end-to-end, gobierno técnico central con autonomía de data planes, y validación estricta de resiliencia en escenarios reales. Este enfoque permite pasar de una plataforma concentrada y reactiva a una arquitectura distribuida, auditable y preparada para crecimiento sostenido. [40][41][44]
+La decision estructural central sigue siendo multicluster: reducir riesgo sistemico, sostener continuidad bancaria y habilitar crecimiento con menor complejidad marginal. El frente APIM se integra en esa estrategia como capacidad north-south critica, ya no como unica referencia de arquitectura. [20][25][34]
+
+El exito del programa depende de ejecutar en secuencia: segmentacion por dominios, perfilado declarativo de clusters, automatizacion operativa end-to-end, observabilidad basada en evidencia y cierre disciplinado de decisiones tecnicas abiertas (incluyendo gateway north-south). Con esa ejecucion, la plataforma puede evolucionar desde un modelo concentrado/reactivo hacia uno distribuido, auditable y preparado para escala sostenida. [31][33][40][41][44]
 
 ## 10. Referencias a documentación detallada (@arquitectura)
 

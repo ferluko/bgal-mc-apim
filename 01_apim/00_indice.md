@@ -43,7 +43,7 @@ Transformación hacia **arquitectura multiclúster activo-activo** con separaci�
 **Arquitectura definida** y decisión técnica de East-West cerrada tras PoCs multiclúster:
 - **Service Mesh East-West seleccionado:** Cilium Mesh (Isovalent Enterprise)
 - **Istio Ambient Mesh (Solo.io / RHOSM):** descartado para este caso de uso por comportamiento reproducible de conexiones stale en ztunnel ante reciclado de pods remotos
-- **API Gateway North-South:** Preferencia por Gloo Gateway
+- **API Gateway North-South:** Capa APIM robusta entre DMZ y workloads, con Gloo Gateway y Kong como candidatos en evaluacion abierta
 - **POCs ejecutadas:** on-prem OpenShift y OpenShift sobre EC2, con el mismo resultado en el patrón de tráfico cluster1 → cluster2 cuando recicla la IP del pod backend
 
 **Timeline crítico:**

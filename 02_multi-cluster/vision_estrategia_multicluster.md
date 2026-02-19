@@ -35,7 +35,7 @@ El banco opera hoy con **un cluster OpenShift monolítico** que concentra la may
 **Detalle técnico relevante (capas):**
 
 | Capa | Situación actual |
-|------|------------------|
+| ------ | ------------------ |
 | **IaaS / virtualización** | VMs sobre VMware; storage SAN con LUNs compartidas con bases de datos y otros servidores |
 | **Plataforma** | OpenShift (OCP) único cluster stretch; versión actual 4.15–4.16; soporte vence 31 oct [[137]](https://notes.granola.ai/d/2776ca2f-66c0-453b-be99-09972e5b1424) |
 | **Red** | Stretch entre sitios; F5/HAProxy en el path; network policies fuerzan tráfico cross-namespace por 3Scale |
@@ -78,7 +78,7 @@ El banco opera hoy con **un cluster OpenShift monolítico** que concentra la may
 ### 1.4 Síntesis as-is
 
 | Dimensión | Estado actual |
-|-----------|----------------|
+| ----------- | ---------------- |
 | **Topología** | Un cluster monolítico stretch, ~100 nodos, 10k pods, 600 ns, 2k servicios |
 | **Blast radius** | Enorme; un fallo impacta operación completa |
 | **Escalabilidad** | Limitada por overcommit, límites 3Scale y diseño histórico |
@@ -150,6 +150,19 @@ La migración se considera de **magnitud comparable o mayor** a OpenShift 3→4,
 
 ## 3. Objetivos de la nueva arquitectura
 
+### 3.0 Marco canonico de objetivos (alineado con 1.2)
+
+Para mantener consistencia con el documento estrategico, la arquitectura objetivo se rige por estos 8 objetivos:
+
+1. **Escalabilidad y segmentacion**
+2. **Resiliencia y continuidad de negocio**
+3. **Seguridad integral**
+4. **Observabilidad y trazabilidad end-to-end**
+5. **Gobernanza y automatizacion operativa**
+6. **Portabilidad de workloads**
+7. **Preparacion para migracion a nube**
+8. **Minimizacion de vendor lock-in**
+
 ### 3.1 Resiliencia y blast radius
 
 - **Reducir blast radius:** Fallas acotadas a un cluster o dominio, no a toda la operación [[9]](https://notes.granola.ai/d/e81b7e4e-6ae4-49b8-aa5d-d6435ed183bd).
@@ -182,17 +195,16 @@ La migración se considera de **magnitud comparable o mayor** a OpenShift 3→4,
 
 ### 3.6 Resumen de objetivos
 
-| Objetivo | Descripción |
-|----------|-------------|
-| **Blast radius** | Fallas localizadas por cluster/dominio |
-| **Mantenimiento** | Ventanas más cortas; actualizaciones por cluster |
-| **Escalabilidad** | Crecimiento por clusters/nodos; sin overcommit extremo en un solo cluster |
-| **Comunicación** | Sin hairpinning; mesh este-oeste; cuatro puntos de entrada claros |
-| **Operación** | GitOps, día 0/día 2, ACM hub-spoke |
-| **Storage** | ODF centralizado, CSI efectivo, menos latencia y puntos únicos de fallo |
-| **APIM** | Sustitución 3Scale; separación N-S/E-W; decisión pre-2027 |
-| **Observabilidad** | eBPF + OTEL + Grafana Cloud; trazas e2e y heat maps |
-| **Estándares** | Gateway API, CNI/CSI, OTEL; equilibrio con productos enterprise donde compense |
+| Objetivo de reingenieria | Traduccion en arquitectura objetivo |
+| ---------- | ------------- |
+| **Escalabilidad y segmentacion** | Crecimiento por clusters/nodos, distribucion por dominios y eliminacion progresiva de cuellos de botella del monolito. |
+| **Resiliencia y continuidad de negocio** | Blast radius acotado, patrones activo-activo/activo-standby segun criticidad y failover validado por pruebas. |
+| **Seguridad integral** | IAM desacoplado, secretos centralizados, RBAC GitOps y politicas de red con cumplimiento auditable. |
+| **Observabilidad y trazabilidad end-to-end** | OTEL + eBPF + Grafana Cloud para correlacion de metricas/logs/trazas sin cortes entre dominios. |
+| **Gobernanza y automatizacion operativa** | Modelo hub-spoke, dia 0/1/2 declarativo y ownership claro por dominio tecnico. |
+| **Portabilidad de workloads** | Estandares Kubernetes/Gateway API, contratos de plataforma y patrones repetibles entre entornos. |
+| **Preparacion para migracion a nube** | Evolucion hibrida por oleadas, sin big bang ni refactorizaciones masivas como precondicion. |
+| **Minimizacion de vendor lock-in** | Interfaces desacopladas y seleccion de componentes reemplazables con balance entre neutralidad y operabilidad. |
 
 ---
 

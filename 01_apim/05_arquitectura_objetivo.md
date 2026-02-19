@@ -148,7 +148,7 @@ Transformación desde cluster monolítico con 3scale hacia **arquitectura multic
 
 **Flujo:**
 1. Internet → DMZ (F5/ Core / Legacy)
-2. DMZ → API Gateway (Gloo Gateway/ Otro)
+2. DMZ → Capa APIM/API Gateway robusta (Gloo o Kong, segun dominio/fase)
 3. API Gateway → Service Mesh (Sidecarless)
 4. Service Mesh → Backend Services
 

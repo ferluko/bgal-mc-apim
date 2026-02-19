@@ -1,11 +1,19 @@
 # Indice estrategico - Reingenieria de plataforma OpenShift
 
-- 1. Contexto estrategico y proposito del documento
+- 1\. Contexto estrategico y proposito del documento
   - 1.1 Objetivo del documento estrategico
   - 1.2 Objetivo de la reingenieria de plataforma
+    - Escalabilidad y segmentacion
+    - Resiliencia y continuidad de negocio
+    - Seguridad integral
+    - Observabilidad y trazabilidad end-to-end
+    - Gobernanza y automatizacion operativa
+    - Portabilidad de workloads
+    - Preparacion para migracion a nube
+    - Minimizacion de vendor lock-in
   - 1.3 Alcance tecnico y organizacional
   - 1.4 Audiencia y decisiones que habilita el documento
-  - 1.5 Criterios de exito y principios rectores
+  - 1.5 Criterios de exito y lineamientos
 - 2\. Contexto de negocio, continuidad y regulacion
   - 2.1 Criticidad de OpenShift para el negocio bancario
   - 2.2 Requisitos regulatorios y de ciberseguridad

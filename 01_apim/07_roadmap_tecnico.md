@@ -42,7 +42,7 @@
 1. **Diseño de Arquitectura Detallada**
    - Arquitectura de 3 capas para North-South (DMZ → API GW → Mesh)
    - Arquitectura de Service Mesh para East-West
-   - Modelo de despliegue on-demand de Gloo Gateway
+   - Modelo de despliegue on-demand de capa APIM/API Gateway (Gloo/Kong segun dominio y fase)
    - Integración con infraestructura existente (F5, OpenShift, DNS)
 
 2. **Diseño de Multiclúster**

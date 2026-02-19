@@ -23,11 +23,11 @@
 
 **Stack seleccionado:**
 - **Service Mesh East-West:** Cilium Mesh (Isovalent Enterprise)
-- **API Gateway North-South:** Gloo Gateway (preferencia actual)
+- **API Gateway North-South:** capa APIM robusta entre DMZ y workloads, con Gloo Gateway y Kong como candidatos principales.
 
 **Componentes:**
 - **Service Mesh Sidecarless:** Para tráfico East-West (Cilium Mesh Enterprise)
-- **API Gateway:** Para tráfico North-South y gestión de APIs externas (preferencia por Gloo Gateway).
+- **API Gateway:** Para tráfico North-South y gestión de APIs externas, con decision final de vendor abierta y coexistencia controlada por fases.
 
 ### Decisión 2: Despliegue On-Demand de capacidades avanzadas de L7
 

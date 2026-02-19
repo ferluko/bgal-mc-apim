@@ -81,7 +81,7 @@
 - ⚠️ Portal funcionalidad inmadura (releasing Marzo 2025)
 - ⚠️ Curva de aprendizaje
 
-**Estado:** Descartado para tráfico East-West de esta iniciativa. Gloo Gateway puede mantenerse como opción para North-South.
+**Estado:** Descartado para tráfico East-West de esta iniciativa. Para North-South se mantiene como candidato junto con Kong, con seleccion final abierta y basada en validacion integral.
 
 #### Kong Enterprise
 

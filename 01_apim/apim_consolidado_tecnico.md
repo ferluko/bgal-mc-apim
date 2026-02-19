@@ -505,11 +505,11 @@ Luego de la Fase 3 se priorizó validar una combinación completa para East-West
 
 **Stack seleccionado:**
 - **Service Mesh East-West:** Cilium Mesh (Isovalent Enterprise)
-- **API Gateway North-South:** Gloo Gateway (preferencia actual)
+- **API Gateway North-South:** capa APIM robusta entre DMZ y workloads, con Gloo Gateway y Kong como candidatos principales.
 
 **Componentes:**
 - **Service Mesh Sidecarless:** Para tráfico East-West (Cilium Mesh Enterprise)
-- **API Gateway:** Para tráfico North-South y gestión de APIs externas (preferencia por Gloo Gateway).
+- **API Gateway:** Para tráfico North-South y gestión de APIs externas, con decision final de vendor abierta y coexistencia controlada por fases.
 
 ### Decisión 2: Despliegue On-Demand de capacidades avanzadas de L7
 
@@ -836,7 +836,7 @@ Transformación desde cluster monolítico con 3scale hacia **arquitectura multic
 
 **Flujo:**
 1. Internet → DMZ (F5/ Core / Legacy)
-2. DMZ → API Gateway (Gloo Gateway/ Otro)
+2. DMZ → Capa APIM/API Gateway robusta (Gloo o Kong)
 3. API Gateway → Service Mesh (Sidecarless)
 4. Service Mesh → Backend Services
 
@@ -955,7 +955,7 @@ Transformación desde cluster monolítico con 3scale hacia **arquitectura multic
 - ⚠️ Portal funcionalidad inmadura (releasing Marzo 2025)
 - ⚠️ Curva de aprendizaje
 
-**Estado:** Descartado para tráfico East-West de esta iniciativa. Gloo Gateway puede mantenerse como opción para North-South.
+**Estado:** Descartado para tráfico East-West de esta iniciativa. Para North-South se mantiene como candidato junto con Kong, con seleccion final abierta y basada en validacion integral.
 
 #### Kong Enterprise
 
@@ -1113,7 +1113,7 @@ Transformación desde cluster monolítico con 3scale hacia **arquitectura multic
 1. **Diseño de Arquitectura Detallada**
    - Arquitectura de 3 capas para North-South (DMZ → API GW → Mesh)
    - Arquitectura de Service Mesh para East-West
-   - Modelo de despliegue on-demand de Gloo Gateway
+   - Modelo de despliegue on-demand de capa APIM/API Gateway (Gloo/Kong segun dominio y fase)
    - Integración con infraestructura existente (F5, OpenShift, DNS)
 
 2. **Diseño de Multiclúster**
@@ -1530,7 +1530,7 @@ El proyecto ha evolucionado desde un simple reemplazo de 3scale hacia una modern
 La **arquitectura objetivo no cambia en su modelo**, pero sí en el componente East-West seleccionado:
 
 - **Service Mesh Sidecarless East-West:** **Cilium Mesh (Isovalent Enterprise)**
-- **API Gateway North-South:** Preferencia por **Gloo Gateway**
+- **API Gateway North-South:** capa APIM robusta entre DMZ y workloads, con Gloo Gateway y Kong como candidatos principales
 - **Arquitectura multiclúster** con failover automático
 - **Fixed pricing** para sostenibilidad financiera
 
@@ -1547,7 +1547,7 @@ La **arquitectura objetivo no cambia en su modelo**, pero sí en el componente E
 
 - **Istio Ambient Mesh (Solo.io / RHOSM):** Descartado para el dominio East-West de esta iniciativa.
 - **Cilium Mesh (Isovalent Enterprise):** Seleccionado para East-West multiclúster.
-- **API Gateway North-South:** Continúa la línea de adopción con Gloo Gateway.
+- **API Gateway North-South:** Decision final abierta entre Gloo/Kong, con cierre por PoC, operabilidad y costo total.
 
 ### Arquitectura Objetivo
 
@@ -1558,7 +1558,7 @@ La **arquitectura objetivo no cambia en su modelo**, pero sí en el componente E
 - Service Mesh directo (sin hair-pinning)
 
 **Despliegue:**
-- Gloo Gateway on-demand en namespaces que lo requieran
+- Capa APIM/API Gateway on-demand en namespaces que lo requieran (coexistencia controlada durante la transicion)
 - Service Mesh Sidecarless desplegado en todos los clusters (Cilium Mesh Enterprise para East-West)
 
 ### Próximos Pasos Críticos

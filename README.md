@@ -12,6 +12,7 @@ El objetivo es disponer de una fuente unica para:
 - Consultar la arquitectura objetivo por dominio.
 - Seguir decisiones tecnicas, roadmap y riesgos.
 - Facilitar comunicacion ejecutiva y alineamiento tecnico entre equipos.
+- Mantener un marco comun de 8 objetivos de reingenieria (escalabilidad y segmentacion, resiliencia, seguridad integral, observabilidad end-to-end, gobernanza y automatizacion, portabilidad, migracion a nube y minimizacion de lock-in).
 
 ## Alcance
 
