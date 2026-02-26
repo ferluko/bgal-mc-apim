@@ -1,0 +1,11 @@
+# Manifiestos generados por cluster (se generan con los scripts)
+clusters/*/manifests/
+clusters/*/clife-tmp/
+
+# Descargas temporales (usar artifacts/ que ya está comprimido)
+downloads/
+
+# Archivos temporales
+*.tmp
+*.bak
+*.backup

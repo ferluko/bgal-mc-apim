@@ -1,0 +1,15 @@
+# Versiones de artefactos descargados
+# Fecha: 2026-02-26T18:15:17-03:00
+
+CLife (Cilium Lifecycle Operator): 1.18.6
+yq: 4.40.5
+jq: 1.7.1
+cilium CLI: 0.16.4
+hubble CLI: 0.13.0
+
+# URLs de descarga
+CLife: https://docs.isovalent.com/v25.11/public/clife/clife-v1.18.6.tar.gz
+yq: https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64
+jq: https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64
+cilium: https://github.com/cilium/cilium-cli/releases/download/v0.16.4/cilium-linux-amd64.tar.gz
+hubble: https://github.com/cilium/hubble/releases/download/v0.13.0/hubble-linux-amd64.tar.gz
