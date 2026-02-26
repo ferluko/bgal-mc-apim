@@ -18,12 +18,30 @@ mkdir -p "${CLIFE_TMP_DIR}"
 # -----------------------------------------------------------------------------
 echo "Generando install-config.yaml..."
 
-# Leer SSH key
+# Leer SSH public key
 if [[ -f "${SSH_PUBLIC_KEY_FILE}" ]]; then
     SSH_KEY=$(cat "${SSH_PUBLIC_KEY_FILE}")
+    echo "  ✓ SSH public key cargada desde ${SSH_PUBLIC_KEY_FILE}"
 else
-    echo "WARN: No se encontró ${SSH_PUBLIC_KEY_FILE}, usando placeholder"
-    SSH_KEY="ssh-rsa PLACEHOLDER"
+    # Intentar ubicaciones alternativas
+    for alt_key in "${HOME}/.ssh/id_rsa.pub" "${HOME}/.ssh/id_ed25519.pub" "/root/.ssh/id_rsa.pub"; do
+        if [[ -f "${alt_key}" ]]; then
+            SSH_KEY=$(cat "${alt_key}")
+            echo "  ✓ SSH public key cargada desde ${alt_key}"
+            break
+        fi
+    done
+    
+    if [[ -z "${SSH_KEY:-}" ]]; then
+        echo "ERROR: No se encontró SSH public key"
+        echo "  Buscado en: ${SSH_PUBLIC_KEY_FILE}"
+        echo "  Alternativas: ~/.ssh/id_rsa.pub, ~/.ssh/id_ed25519.pub"
+        echo ""
+        echo "Opciones:"
+        echo "  1. Generar una: ssh-keygen -t rsa -b 4096"
+        echo "  2. Especificar ruta: export SSH_PUBLIC_KEY_FILE=/path/to/key.pub"
+        exit 1
+    fi
 fi
 
 # Convertir IPs a formato YAML
