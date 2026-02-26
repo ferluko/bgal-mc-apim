@@ -53,7 +53,7 @@ export CLIFE_URL="https://docs.isovalent.com/v25.11/public/clife/clife-v${CLIFE_
 
 # --- ACM ---
 export ACM_NAMESPACE="${CLUSTER_NAME}"
-export ACM_IMAGE_SET="${ACM_IMAGE_SET:-img4.18.18-multi-appsub}"
+export ACM_IMAGE_SET="${ACM_IMAGE_SET:-img4.18.21-x86-64-appsub}"
 
 # --- SSH Key (path a las claves) ---
 export SSH_PUBLIC_KEY_FILE="${SSH_PUBLIC_KEY_FILE:-${HOME}/.ssh/id_rsa.pub}"
