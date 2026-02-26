@@ -44,6 +44,17 @@ else
     fi
 fi
 
+# Verificar credenciales vSphere
+if [[ -z "${VSPHERE_PASSWORD:-}" ]]; then
+    echo "ERROR: VSPHERE_PASSWORD no está definida"
+    echo ""
+    echo "Opciones:"
+    echo "  1. Exportar: export VSPHERE_PASSWORD='tu-password'"
+    echo "  2. Ejecutar: VSPHERE_PASSWORD='tu-password' CLUSTER_NAME=${CLUSTER_NAME} ./02_generate_manifests.sh"
+    exit 1
+fi
+echo "  ✓ Credenciales vSphere configuradas"
+
 # Convertir IPs a formato YAML
 IFS=',' read -ra MASTER_IP_ARRAY <<< "${HOST_MASTER_IPS}"
 IFS=',' read -ra WORKER_IP_ARRAY <<< "${HOST_WORKER_IPS}"
@@ -148,7 +159,7 @@ done)
     vcenters:
     - datacenters:
       - "${VSPHERE_DATACENTER}"
-      password: "\${VSPHERE_PASSWORD}"
+      password: "${VSPHERE_PASSWORD}"
       port: 443
       server: ${VSPHERE_SERVER}
       user: "${VSPHERE_USER}"
