@@ -167,9 +167,18 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
-# 6. Secret de certificados vSphere (si es necesario)
+# 6. Secret de certificados vSphere (descargar automáticamente)
 # -----------------------------------------------------------------------------
-cat > "${ACM_MANIFESTS_DIR}/05-vsphere-certs-secret.yaml" << EOF
+echo "Descargando certificados de vSphere (${VSPHERE_SERVER})..."
+VSPHERE_CERT_FILE="${MANIFESTS_DIR}/vsphere-ca.crt"
+
+# Intentar descargar el certificado del vCenter
+if openssl s_client -connect "${VSPHERE_SERVER}:443" -showcerts </dev/null 2>/dev/null | \
+   openssl x509 -outform PEM > "${VSPHERE_CERT_FILE}" 2>/dev/null && \
+   [[ -s "${VSPHERE_CERT_FILE}" ]]; then
+    
+    VSPHERE_CERT_B64=$(base64 -w0 < "${VSPHERE_CERT_FILE}")
+    cat > "${ACM_MANIFESTS_DIR}/05-vsphere-certs-secret.yaml" << EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -177,12 +186,48 @@ metadata:
   namespace: ${ACM_NAMESPACE}
 type: Opaque
 data:
-  .cacert: |
-    # TODO: Si vSphere usa certificados self-signed, agregar el CA cert (base64)
-    # Obtener: openssl s_client -connect ${VSPHERE_SERVER}:443 -showcerts
-    # Codificar: cat vcenter-ca.crt | base64 -w0
-    # Si no es necesario, eliminar certificatesSecretRef del ClusterDeployment
+  .cacert: ${VSPHERE_CERT_B64}
 EOF
+    echo "  ✓ Certificado vSphere descargado y codificado"
+else
+    echo "  ⚠ No se pudo descargar el certificado de ${VSPHERE_SERVER}"
+    echo "    Intentando obtener la cadena completa de certificados..."
+    
+    # Intentar obtener toda la cadena de certificados
+    if openssl s_client -connect "${VSPHERE_SERVER}:443" -showcerts </dev/null 2>/dev/null | \
+       sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' > "${VSPHERE_CERT_FILE}" 2>/dev/null && \
+       [[ -s "${VSPHERE_CERT_FILE}" ]]; then
+        
+        VSPHERE_CERT_B64=$(base64 -w0 < "${VSPHERE_CERT_FILE}")
+        cat > "${ACM_MANIFESTS_DIR}/05-vsphere-certs-secret.yaml" << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-vsphere-certs
+  namespace: ${ACM_NAMESPACE}
+type: Opaque
+data:
+  .cacert: ${VSPHERE_CERT_B64}
+EOF
+        echo "  ✓ Cadena de certificados vSphere descargada y codificada"
+    else
+        echo "  ✗ No se pudo conectar a ${VSPHERE_SERVER}:443"
+        echo "    Creando secret vacío - deberás completarlo manualmente o"
+        echo "    eliminar certificatesSecretRef del ClusterDeployment si no es necesario"
+        
+        # Crear un secret con un valor vacío válido (string vacío en base64)
+        cat > "${ACM_MANIFESTS_DIR}/05-vsphere-certs-secret.yaml" << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-vsphere-certs
+  namespace: ${ACM_NAMESPACE}
+type: Opaque
+data:
+  .cacert: ""
+EOF
+    fi
+fi
 
 # -----------------------------------------------------------------------------
 # 7. ConfigMap con manifiestos CLife (Cilium)
