@@ -59,6 +59,9 @@ export ACM_IMAGE_SET="${ACM_IMAGE_SET:-img4.18.21-x86-64-appsub}"
 export SSH_PUBLIC_KEY_FILE="${SSH_PUBLIC_KEY_FILE:-${HOME}/.ssh/id_rsa.pub}"
 export SSH_PRIVATE_KEY_FILE="${SSH_PRIVATE_KEY_FILE:-${HOME}/.ssh/id_rsa}"
 
+# --- Pull Secret ---
+export PULL_SECRET_FILE="${PULL_SECRET_FILE:-${HOME}/.pull-secret.txt}"
+
 # --- Opciones ---
 export ENABLE_KPR="${ENABLE_KPR:-true}"
 export DRY_RUN="${DRY_RUN:-false}"

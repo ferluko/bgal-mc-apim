@@ -54,7 +54,21 @@ EOF
 # -----------------------------------------------------------------------------
 # 2. Pull Secret (REQUERIDO - debe existir antes del ClusterDeployment)
 # -----------------------------------------------------------------------------
-cat > "${ACM_MANIFESTS_DIR}/01-pull-secret.yaml" << EOF
+if [[ -f "${PULL_SECRET_FILE}" ]]; then
+    PULL_SECRET_B64=$(base64 -w0 < "${PULL_SECRET_FILE}")
+    cat > "${ACM_MANIFESTS_DIR}/01-pull-secret.yaml" << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${CLUSTER_NAME}-pull-secret
+  namespace: ${ACM_NAMESPACE}
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ${PULL_SECRET_B64}
+EOF
+    echo "  ✓ Pull secret generado desde ${PULL_SECRET_FILE}"
+else
+    cat > "${ACM_MANIFESTS_DIR}/01-pull-secret.yaml" << EOF
 apiVersion: v1
 kind: Secret
 metadata:
@@ -67,6 +81,8 @@ data:
     # Obtener de: https://console.redhat.com/openshift/install/pull-secret
     # Codificar: cat pull-secret.json | base64 -w0
 EOF
+    echo "  ⚠ Pull secret: REQUIERE COMPLETAR (${PULL_SECRET_FILE} no encontrado)"
+fi
 
 # -----------------------------------------------------------------------------
 # 3. Secret de install-config
@@ -373,9 +389,13 @@ echo "  ANTES DE APLICAR - Verificar/completar:"
 echo "============================================="
 echo ""
 echo "1. Pull Secret de Red Hat (REQUERIDO):"
-echo "   - Obtener de: https://console.redhat.com/openshift/install/pull-secret"
-echo "   - Editar: ${ACM_MANIFESTS_DIR}/01-pull-secret.yaml"
-echo "   - Reemplazar el TODO con: cat pull-secret.json | base64 -w0"
+if [[ -f "${PULL_SECRET_FILE}" ]]; then
+    echo "   ✓ Ya incluido desde ${PULL_SECRET_FILE}"
+else
+    echo "   - Obtener de: https://console.redhat.com/openshift/install/pull-secret"
+    echo "   - Guardar en: ${PULL_SECRET_FILE}"
+    echo "   - O editar: ${ACM_MANIFESTS_DIR}/01-pull-secret.yaml"
+fi
 echo ""
 echo "2. SSH Private Key:"
 if [[ -f "${SSH_PRIVATE_KEY_FILE}" ]]; then
