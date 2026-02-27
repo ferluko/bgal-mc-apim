@@ -219,10 +219,10 @@ if [[ "${AIR_GAPPED}" == "true" ]]; then
     ui:
       frontend:
         image:
-          repository: "${INTERNAL_REGISTRY}/hubble-ui-enterprise"
+          repository: "${INTERNAL_REGISTRY}/hubble-ui"
       backend:
         image:
-          repository: "${INTERNAL_REGISTRY}/hubble-ui-enterprise-backend"
+          repository: "${INTERNAL_REGISTRY}/hubble-ui-backend"
 IMGEOF
 )
 else

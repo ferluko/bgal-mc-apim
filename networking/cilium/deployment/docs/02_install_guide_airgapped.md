@@ -193,8 +193,8 @@ Debe mostrar las imágenes de Cilium:
     "cilium",
     "cilium-envoy",
     "hubble-relay",
-    "hubble-ui-enterprise",
-    "hubble-ui-enterprise-backend",
+    "hubble-ui",
+    "hubble-ui-backend",
     "operator-generic"
   ]
 }
@@ -271,10 +271,10 @@ spec:
     ui:
       frontend:
         image:
-          repository: "<IP>:5000/hubble-ui-enterprise"
+          repository: "<IP>:5000/hubble-ui"
       backend:
         image:
-          repository: "<IP>:5000/hubble-ui-enterprise-backend"
+          repository: "<IP>:5000/hubble-ui-backend"
 ```
 
 ### 5.4 Crear recursos en ACM

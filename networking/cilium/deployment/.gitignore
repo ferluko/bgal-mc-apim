@@ -5,6 +5,12 @@ clusters/*/clife-tmp/
 # Descargas temporales (usar artifacts/ que ya está comprimido)
 downloads/
 
+# Imágenes de contenedores (muy grandes para Git, transferir por scp)
+artifacts/images/*.tar.gz
+
+# Registry data (generado por start-local-registry.sh)
+artifacts/registry-data/
+
 # Archivos temporales
 *.tmp
 *.bak

@@ -147,14 +147,19 @@ echo -e "${CYAN}[3/5] Descargando imágenes de Cilium...${NC}"
 cd "${ARTIFACTS_DIR}/images"
 
 # Lista de imágenes de Cilium/Isovalent para v1.18.6
-# Estas son las imágenes básicas; la lista completa depende de las features habilitadas
+# Obtenidas con: helm template cilium isovalent/cilium --version 1.18.6 --set hubble.enabled=true ...
+# La versión correcta es cee.2 (no cee.1)
 CILIUM_IMAGES=(
-    "quay.io/isovalent/cilium:v1.18.6-cee.1"
-    "quay.io/isovalent/operator-generic:v1.18.6-cee.1"
-    "quay.io/isovalent/cilium-envoy:v1.18.6-cee.1"
-    "quay.io/isovalent/hubble-relay:v1.18.6-cee.1"
-    "quay.io/isovalent/hubble-ui-enterprise:v1.18.6-cee.1"
-    "quay.io/isovalent/hubble-ui-enterprise-backend:v1.18.6-cee.1"
+    "quay.io/isovalent/cilium:v1.18.6-cee.2"
+    "quay.io/isovalent/operator-generic:v1.18.6-cee.2"
+    "quay.io/isovalent/cilium-envoy:v1.18.6-cee.2"
+    "quay.io/isovalent/hubble-relay:v1.18.6-cee.2"
+)
+
+# Hubble UI (desde quay.io/cilium, no isovalent)
+HUBBLE_IMAGES=(
+    "quay.io/cilium/hubble-ui:v0.13.3"
+    "quay.io/cilium/hubble-ui-backend:v0.13.3"
 )
 
 # Imágenes adicionales para tests
@@ -176,6 +181,12 @@ cat > images-list.txt << EOF
 EOF
 
 for img in "${CILIUM_IMAGES[@]}"; do
+    echo "$img" >> images-list.txt
+done
+
+echo "" >> images-list.txt
+echo "# Hubble UI images (quay.io/cilium)" >> images-list.txt
+for img in "${HUBBLE_IMAGES[@]}"; do
     echo "$img" >> images-list.txt
 done
 
@@ -204,7 +215,7 @@ else
     if [[ -n "${CONTAINER_CMD}" ]]; then
         echo "Usando ${CONTAINER_CMD} para descargar imágenes..."
         
-        ALL_IMAGES=("${CILIUM_IMAGES[@]}" "${TEST_IMAGES[@]}")
+        ALL_IMAGES=("${CILIUM_IMAGES[@]}" "${HUBBLE_IMAGES[@]}" "${TEST_IMAGES[@]}")
         
         # Pull todas las imágenes
         for img in "${ALL_IMAGES[@]}"; do
