@@ -173,7 +173,7 @@ echo "Descargando certificados de vSphere (${VSPHERE_SERVER})..."
 VSPHERE_CERT_FILE="${MANIFESTS_DIR}/vsphere-ca.crt"
 
 # Intentar descargar el certificado del vCenter
-if openssl s_client -connect "${VSPHERE_SERVER}:443" -showcerts </dev/null 2>/dev/null | \
+if openssl s_client -connect "${VSPHERE_SERVER}:6443" -showcerts </dev/null 2>/dev/null | \
    openssl x509 -outform PEM > "${VSPHERE_CERT_FILE}" 2>/dev/null && \
    [[ -s "${VSPHERE_CERT_FILE}" ]]; then
     
@@ -279,14 +279,14 @@ fi
 #
 # Con ENABLE_KPR=true:
 #   - KUBERNETES_SERVICE_HOST=api.${CLUSTER_NAME}.${BASE_DOMAIN}
-#   - KUBERNETES_SERVICE_PORT=443
+#   - KUBERNETES_SERVICE_PORT=6443
 #
 # Alternativamente, se puede especificar manualmente:
 #   CLIFE_API_HOST=<ip> CLIFE_API_PORT=<port> ./03_create_acm_resources.sh
 
 if [[ "${ENABLE_KPR}" == "true" ]]; then
     KUBERNETES_SERVICE_HOST="api.${CLUSTER_NAME}.${BASE_DOMAIN}"
-    KUBERNETES_SERVICE_PORT="443"
+    KUBERNETES_SERVICE_PORT="6443"
     
     echo "  Configurando API server para KPR: ${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
     

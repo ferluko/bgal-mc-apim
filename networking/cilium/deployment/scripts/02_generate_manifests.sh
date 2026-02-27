@@ -263,7 +263,7 @@ spec:
   sessionAffinity: true
   kubeProxyReplacement: true
   k8sServiceHost: "api.${CLUSTER_NAME}.${BASE_DOMAIN}"
-  k8sServicePort: "443"
+  k8sServicePort: "6443"
   clusterHealthPort: 9940
   tunnelPort: 4789
 EOF
