@@ -285,11 +285,21 @@ fi
 # -----------------------------------------------------------------------------
 echo "Generando ConfigMap con manifiestos CLife..."
 
-# IMPORTANTE: Para Hive/ACM, los manifiestos en el ConfigMap se copian al
-# directorio de instalación. Según documentación Isovalent, usar:
-# kubectl create configmap <name> --from-file=clife-tmp
+# IMPORTANTE: Para instalaciones Day 0 (bootstrap) con RHACM/Hive, se deben
+# EXCLUIR los siguientes archivos que dependen de OLM funcionando:
+# - subscription.yaml: Intenta instalar CLife via OperatorHub (requiere OLM+red)
+# - operatorgroup.yaml: Asociado a la Subscription de OLM
+#
+# El Deployment de CLife ya tiene hostNetwork: true y las imágenes embebidas
+# como RELATED_IMAGE_*, por lo que funciona durante el bootstrap sin OLM.
 #
 # Referencia: https://docs.isovalent.com/ink/install/openshift.html
+
+# Lista de archivos a EXCLUIR del ConfigMap (requieren OLM funcionando)
+EXCLUDED_FILES=(
+    "subscription.yaml"
+    "operatorgroup.yaml"
+)
 
 cat > "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << 'CONFIGMAP_HEADER'
 apiVersion: v1
@@ -303,19 +313,34 @@ cat >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << EOF
 data:
 EOF
 
-# Agregar cada archivo como una key en el ConfigMap
+# Agregar cada archivo como una key en el ConfigMap, excluyendo los de OLM
+INCLUDED_COUNT=0
+EXCLUDED_COUNT=0
 for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
     if [[ -f "$file" ]]; then
         filename=$(basename "$file")
-        echo "  ${filename}: |" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
-        # Indentar contenido con 4 espacios
-        sed 's/^/    /' "$file" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
+        
+        # Verificar si el archivo está en la lista de exclusión
+        SKIP_FILE=false
+        for excluded in "${EXCLUDED_FILES[@]}"; do
+            if [[ "$filename" == "$excluded" ]]; then
+                SKIP_FILE=true
+                echo "  ⊘ Excluyendo ${filename} (requiere OLM)"
+                ((EXCLUDED_COUNT++))
+                break
+            fi
+        done
+        
+        if [[ "$SKIP_FILE" == "false" ]]; then
+            echo "  ${filename}: |" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
+            # Indentar contenido con 4 espacios
+            sed 's/^/    /' "$file" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
+            ((INCLUDED_COUNT++))
+        fi
     fi
 done
 
-# Contar manifiestos incluidos
-MANIFEST_COUNT=$(ls -1 "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml 2>/dev/null | wc -l)
-echo "  ✓ CLife manifests ConfigMap generado (${MANIFEST_COUNT} archivos)"
+echo "  ✓ CLife manifests ConfigMap generado (${INCLUDED_COUNT} archivos incluidos, ${EXCLUDED_COUNT} excluidos)"
 
 # -----------------------------------------------------------------------------
 # 9. ClusterDeployment
@@ -536,3 +561,20 @@ echo ""
 echo "  watch 'kubectl -n ${ACM_NAMESPACE} get clusterdeployment,pods'"
 echo "  kubectl -n ${ACM_NAMESPACE} logs -f job/${CLUSTER_NAME}-0-provision"
 echo "  ./04_verify_install.sh"
+echo ""
+echo "============================================="
+echo "  NOTA: Manifiestos OLM Excluidos"
+echo "============================================="
+echo ""
+echo "Los siguientes archivos fueron EXCLUIDOS del ConfigMap porque"
+echo "requieren OLM funcionando (no disponible durante bootstrap):"
+echo "  - subscription.yaml"
+echo "  - operatorgroup.yaml"
+echo ""
+echo "El operador CLife se instala directamente via Deployment con"
+echo "hostNetwork: true, lo que permite funcionar sin CNI durante"
+echo "el bootstrap del cluster."
+echo ""
+echo "Post-instalación (Day 2), si deseas gestionar CLife via OLM:"
+echo "  1. Los archivos excluidos están en: ${CLIFE_EXTRACT_DIR}/"
+echo "  2. Aplicar manualmente después de que el cluster esté operativo"
