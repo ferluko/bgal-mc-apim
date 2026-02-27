@@ -272,27 +272,52 @@ if [[ -f "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" ]]; then
     echo "  ✓ cluster-network-02-config-local.yml copiado"
 fi
 
-# NOTA: NO se agregan KUBERNETES_SERVICE_HOST/PORT al Deployment de CLife.
-# 
-# Razón: Durante el bootstrap, CLife necesita conectarse al API server local
-# (bootstrap node), no al API externo del cluster. Si se configura el API
-# externo, CLife falla porque no hay CNI/red funcionando aún.
+# Configurar KUBERNETES_SERVICE_HOST/PORT para KPR
 #
-# CLife usará automáticamente el service account token y el API server interno.
-# La configuración de KPR (kubeProxyReplacement) se aplica en el CiliumConfig,
-# no en el Deployment de CLife.
+# Cuando KPR (Kube Proxy Replacement) está habilitado, CLife necesita saber
+# cómo conectarse al API server externo ya que no habrá kube-proxy.
 #
-# Si necesitas forzar una configuración específica del API server para CLife,
-# puedes hacerlo manualmente post-despliegue o usar:
+# Con ENABLE_KPR=true:
+#   - KUBERNETES_SERVICE_HOST=api.${CLUSTER_NAME}.${BASE_DOMAIN}
+#   - KUBERNETES_SERVICE_PORT=443
+#
+# Alternativamente, se puede especificar manualmente:
 #   CLIFE_API_HOST=<ip> CLIFE_API_PORT=<port> ./03_create_acm_resources.sh
 
-if [[ -n "${CLIFE_API_HOST:-}" ]]; then
+if [[ "${ENABLE_KPR}" == "true" ]]; then
+    KUBERNETES_SERVICE_HOST="api.${CLUSTER_NAME}.${BASE_DOMAIN}"
+    KUBERNETES_SERVICE_PORT="443"
+    
+    echo "  Configurando API server para KPR: ${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+    
+    # Modificar el Deployment de CLife
+    DEPLOYMENT_FILE="${CLIFE_EXTRACT_DIR}/apps_v1_deployment_clife-controller-manager.yaml"
+    if [[ -f "${DEPLOYMENT_FILE}" ]]; then
+        if command -v yq &>/dev/null; then
+            yq -i '(.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}]' "${DEPLOYMENT_FILE}"
+            echo "  ✓ Variables KUBERNETES_SERVICE_HOST/PORT agregadas al Deployment de CLife"
+        else
+            echo "  ⚠ yq no disponible - agregar manualmente las variables de entorno al Deployment"
+        fi
+    fi
+    
+    # Modificar la Subscription de CLife (si existe y se va a incluir)
+    SUBSCRIPTION_FILE="${CLIFE_EXTRACT_DIR}/subscription.yaml"
+    if [[ -f "${SUBSCRIPTION_FILE}" ]] && [[ "${INCLUDE_OLM_MANIFESTS:-false}" == "true" ]]; then
+        if command -v yq &>/dev/null; then
+            # Usar = en lugar de += porque subscription.yaml no tiene .spec.config.env por defecto
+            yq -i '.spec.config.env = [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}]' "${SUBSCRIPTION_FILE}"
+            echo "  ✓ Variables KUBERNETES_SERVICE_HOST/PORT agregadas a la Subscription"
+        fi
+    fi
+elif [[ -n "${CLIFE_API_HOST:-}" ]]; then
+    # Configuración manual (comportamiento anterior)
     echo "  Configurando API server personalizado para CLife..."
     DEPLOYMENT_FILE="${CLIFE_EXTRACT_DIR}/apps_v1_deployment_clife-controller-manager.yaml"
     if [[ -f "${DEPLOYMENT_FILE}" ]]; then
         if command -v yq &>/dev/null; then
             CLIFE_API_PORT="${CLIFE_API_PORT:-6443}"
-            yq -i '(.spec.template.spec.containers[] | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${CLIFE_API_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${CLIFE_API_PORT}"'"}]' "${DEPLOYMENT_FILE}"
+            yq -i '(.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${CLIFE_API_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${CLIFE_API_PORT}"'"}]' "${DEPLOYMENT_FILE}"
             echo "  ✓ Variables KUBERNETES_SERVICE_HOST=${CLIFE_API_HOST}:${CLIFE_API_PORT} agregadas al Deployment"
         else
             echo "  ⚠ yq no disponible, las variables de entorno deben agregarse manualmente"
@@ -354,14 +379,16 @@ for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
         
         # Verificar si el archivo está en la lista de exclusión
         SKIP_FILE=false
-        for excluded in "${EXCLUDED_FILES[@]}"; do
-            if [[ "$filename" == "$excluded" ]]; then
-                SKIP_FILE=true
-                echo "  ⊘ Excluyendo ${filename} (requiere OLM)"
-                EXCLUDED_COUNT=$((EXCLUDED_COUNT + 1))
-                break
-            fi
-        done
+        if [[ ${#EXCLUDED_FILES[@]} -gt 0 ]]; then
+            for excluded in "${EXCLUDED_FILES[@]}"; do
+                if [[ "$filename" == "$excluded" ]]; then
+                    SKIP_FILE=true
+                    echo "  ⊘ Excluyendo ${filename} (requiere OLM)"
+                    EXCLUDED_COUNT=$((EXCLUDED_COUNT + 1))
+                    break
+                fi
+            done
+        fi
         
         if [[ "$SKIP_FILE" == "false" ]]; then
             echo "  + Incluyendo: ${filename}"
@@ -530,9 +557,14 @@ echo "  watch 'kubectl -n NAMESPACE_PLACEHOLDER get clusterdeployment,pods'"
 echo "  kubectl -n NAMESPACE_PLACEHOLDER logs -f job/CLUSTER_PLACEHOLDER-0-provision"
 APPLY_SCRIPT
 
-# Reemplazar placeholders en el script
-sed -i "s/NAMESPACE_PLACEHOLDER/${ACM_NAMESPACE}/g" "${ACM_MANIFESTS_DIR}/apply.sh"
-sed -i "s/CLUSTER_PLACEHOLDER/${CLUSTER_NAME}/g" "${ACM_MANIFESTS_DIR}/apply.sh"
+# Reemplazar placeholders en el script (compatible con macOS y Linux)
+if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "s/NAMESPACE_PLACEHOLDER/${ACM_NAMESPACE}/g" "${ACM_MANIFESTS_DIR}/apply.sh"
+    sed -i '' "s/CLUSTER_PLACEHOLDER/${CLUSTER_NAME}/g" "${ACM_MANIFESTS_DIR}/apply.sh"
+else
+    sed -i "s/NAMESPACE_PLACEHOLDER/${ACM_NAMESPACE}/g" "${ACM_MANIFESTS_DIR}/apply.sh"
+    sed -i "s/CLUSTER_PLACEHOLDER/${CLUSTER_NAME}/g" "${ACM_MANIFESTS_DIR}/apply.sh"
+fi
 chmod +x "${ACM_MANIFESTS_DIR}/apply.sh"
 
 # -----------------------------------------------------------------------------
