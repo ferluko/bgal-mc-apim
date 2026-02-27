@@ -250,6 +250,16 @@ fi
 echo "  Extrayendo manifiestos de CLife..."
 tar -xzf "${CLIFE_TARBALL}" -C "${CLIFE_EXTRACT_DIR}"
 
+# Verificar extracción
+EXTRACTED_COUNT=$(ls "${CLIFE_EXTRACT_DIR}"/*.yaml 2>/dev/null | wc -l)
+echo "  Archivos extraídos: ${EXTRACTED_COUNT}"
+if [[ ${EXTRACTED_COUNT} -lt 10 ]]; then
+    echo "  ERROR: Se esperaban ~16 archivos YAML, solo se encontraron ${EXTRACTED_COUNT}"
+    echo "  Contenido del directorio:"
+    ls -la "${CLIFE_EXTRACT_DIR}/"
+    exit 1
+fi
+
 # Copiar nuestro ciliumconfig.yaml personalizado (sobrescribe el del tarball)
 if [[ -f "${CLIFE_TMP_DIR}/ciliumconfig.yaml" ]]; then
     cp "${CLIFE_TMP_DIR}/ciliumconfig.yaml" "${CLIFE_EXTRACT_DIR}/ciliumconfig.yaml"
@@ -316,6 +326,12 @@ EOF
 # Agregar cada archivo como una key en el ConfigMap, excluyendo los de OLM
 INCLUDED_COUNT=0
 EXCLUDED_COUNT=0
+
+echo "  Procesando archivos YAML del directorio: ${CLIFE_EXTRACT_DIR}"
+echo "  Archivos encontrados:"
+ls -1 "${CLIFE_EXTRACT_DIR}"/*.yaml 2>/dev/null || echo "    (ninguno con extensión .yaml)"
+ls -1 "${CLIFE_EXTRACT_DIR}"/*.yml 2>/dev/null || echo "    (ninguno con extensión .yml)"
+
 for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
     if [[ -f "$file" ]]; then
         filename=$(basename "$file")
@@ -332,6 +348,7 @@ for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
         done
         
         if [[ "$SKIP_FILE" == "false" ]]; then
+            echo "  + Incluyendo: ${filename}"
             echo "  ${filename}: |" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
             # Indentar contenido con 4 espacios
             sed 's/^/    /' "$file" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
@@ -341,6 +358,12 @@ for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
 done
 
 echo "  ✓ CLife manifests ConfigMap generado (${INCLUDED_COUNT} archivos incluidos, ${EXCLUDED_COUNT} excluidos)"
+
+# Verificar que se incluyeron los manifiestos críticos
+if [[ ${INCLUDED_COUNT} -lt 10 ]]; then
+    echo "  ⚠ ADVERTENCIA: Solo se incluyeron ${INCLUDED_COUNT} archivos. Se esperaban ~14-16."
+    echo "  Verificar el contenido del ConfigMap generado."
+fi
 
 # -----------------------------------------------------------------------------
 # 9. ClusterDeployment
