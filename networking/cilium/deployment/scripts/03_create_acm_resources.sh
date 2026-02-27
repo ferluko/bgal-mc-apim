@@ -230,36 +230,95 @@ EOF
 fi
 
 # -----------------------------------------------------------------------------
-# 7. ConfigMap con manifiestos CLife (Cilium)
+# 7. Extraer y preparar manifiestos CLife (Cilium)
+# -----------------------------------------------------------------------------
+echo "Preparando manifiestos CLife..."
+
+# Directorio temporal para extraer el tarball
+CLIFE_EXTRACT_DIR="${MANIFESTS_DIR}/clife-extracted"
+rm -rf "${CLIFE_EXTRACT_DIR}"
+mkdir -p "${CLIFE_EXTRACT_DIR}"
+
+# Buscar el tarball de CLife
+CLIFE_TARBALL="${SCRIPT_DIR}/../artifacts/clife/clife-v1.18.6.tar.gz"
+if [[ ! -f "${CLIFE_TARBALL}" ]]; then
+    echo "ERROR: No se encontró el tarball de CLife en ${CLIFE_TARBALL}"
+    exit 1
+fi
+
+# Extraer TODOS los manifiestos del tarball (según documentación Isovalent)
+echo "  Extrayendo manifiestos de CLife..."
+tar -xzf "${CLIFE_TARBALL}" -C "${CLIFE_EXTRACT_DIR}"
+
+# Copiar nuestro ciliumconfig.yaml personalizado (sobrescribe el del tarball)
+if [[ -f "${CLIFE_TMP_DIR}/ciliumconfig.yaml" ]]; then
+    cp "${CLIFE_TMP_DIR}/ciliumconfig.yaml" "${CLIFE_EXTRACT_DIR}/ciliumconfig.yaml"
+    echo "  ✓ ciliumconfig.yaml personalizado copiado"
+fi
+
+# Copiar cluster-network-02-config-local.yml
+if [[ -f "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" ]]; then
+    cp "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" "${CLIFE_EXTRACT_DIR}/"
+    echo "  ✓ cluster-network-02-config-local.yml copiado"
+fi
+
+# Si KPR está habilitado, modificar el Deployment de CLife para agregar env vars
+# Según documentación: https://docs.isovalent.com/ink/install/openshift.html
+if [[ "${ENABLE_KPR}" == "true" ]]; then
+    echo "  Configurando KPR en el Deployment de CLife..."
+    DEPLOYMENT_FILE="${CLIFE_EXTRACT_DIR}/apps_v1_deployment_clife-controller-manager.yaml"
+    if [[ -f "${DEPLOYMENT_FILE}" ]]; then
+        # Usar yq para agregar las variables de entorno si está disponible
+        if command -v yq &>/dev/null; then
+            KUBERNETES_SERVICE_HOST="api.${CLUSTER_NAME}.${BASE_DOMAIN}"
+            KUBERNETES_SERVICE_PORT="443"
+            yq -i '(.spec.template.spec.containers[] | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}]' "${DEPLOYMENT_FILE}"
+            echo "  ✓ Variables KUBERNETES_SERVICE_HOST/PORT agregadas al Deployment"
+        else
+            echo "  ⚠ yq no disponible, las variables de entorno deben agregarse manualmente"
+        fi
+    fi
+fi
+
+# -----------------------------------------------------------------------------
+# 8. ConfigMap con manifiestos CLife (Cilium)
 # -----------------------------------------------------------------------------
 echo "Generando ConfigMap con manifiestos CLife..."
 
 # IMPORTANTE: Para Hive/ACM, los manifiestos en el ConfigMap se copian al
-# directorio de instalación. El nombre de la key en el ConfigMap se usa
-# como nombre de archivo en el directorio manifests/.
+# directorio de instalación. Según documentación Isovalent, usar:
+# kubectl create configmap <name> --from-file=clife-tmp
 #
-# Referencia: https://github.com/openshift/hive/blob/master/docs/using-hive.md
+# Referencia: https://docs.isovalent.com/ink/install/openshift.html
 
-cat > "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << EOF
+cat > "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << 'CONFIGMAP_HEADER'
 apiVersion: v1
 kind: ConfigMap
 metadata:
+CONFIGMAP_HEADER
+
+cat >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << EOF
   name: ${CLUSTER_NAME}-clife-manifests
   namespace: ${ACM_NAMESPACE}
 data:
-$(for file in "${CLIFE_TMP_DIR}"/*; do
-    if [[ -f "$file" ]]; then
-        filename=$(basename "$file")
-        echo "  ${filename}: |"
-        cat "$file" | sed 's/^/    /'
-    fi
-done)
 EOF
 
-echo "  ✓ CLife manifests ConfigMap generado"
+# Agregar cada archivo como una key en el ConfigMap
+for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
+    if [[ -f "$file" ]]; then
+        filename=$(basename "$file")
+        echo "  ${filename}: |" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
+        # Indentar contenido con 4 espacios
+        sed 's/^/    /' "$file" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
+    fi
+done
+
+# Contar manifiestos incluidos
+MANIFEST_COUNT=$(ls -1 "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml 2>/dev/null | wc -l)
+echo "  ✓ CLife manifests ConfigMap generado (${MANIFEST_COUNT} archivos)"
 
 # -----------------------------------------------------------------------------
-# 8. ClusterDeployment
+# 9. ClusterDeployment
 # -----------------------------------------------------------------------------
 cat > "${ACM_MANIFESTS_DIR}/10-clusterdeployment.yaml" << EOF
 apiVersion: hive.openshift.io/v1
@@ -301,7 +360,7 @@ EOF
 echo "  ✓ ClusterDeployment generado"
 
 # -----------------------------------------------------------------------------
-# 9. ManagedCluster (para que ACM gestione el cluster)
+# 10. ManagedCluster (para que ACM gestione el cluster)
 # -----------------------------------------------------------------------------
 cat > "${ACM_MANIFESTS_DIR}/11-managedcluster.yaml" << EOF
 apiVersion: cluster.open-cluster-management.io/v1
@@ -320,7 +379,7 @@ EOF
 echo "  ✓ ManagedCluster generado"
 
 # -----------------------------------------------------------------------------
-# 10. KlusterletAddonConfig (opcional, para addons de ACM)
+# 11. KlusterletAddonConfig (opcional, para addons de ACM)
 # -----------------------------------------------------------------------------
 cat > "${ACM_MANIFESTS_DIR}/12-klusterletaddonconfig.yaml" << EOF
 apiVersion: agent.open-cluster-management.io/v1

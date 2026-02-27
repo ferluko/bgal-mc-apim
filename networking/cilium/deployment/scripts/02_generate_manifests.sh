@@ -171,25 +171,60 @@ EOF
 echo "  ✓ install-config.yaml"
 
 # -----------------------------------------------------------------------------
-# 2. ciliumconfig.yaml
+# 2. ciliumconfig.yaml (según documentación Isovalent para RHACM)
 # -----------------------------------------------------------------------------
 echo "Generando ciliumconfig.yaml..."
 
+# Según docs.isovalent.com/ink/install/openshift.html:
+# - Con KPR: definir k8sServiceHost y k8sServicePort, NO usar chainingMode
+# - Sin KPR: usar chainingMode: portmap y featureGate
 if [[ "${ENABLE_KPR}" == "true" ]]; then
-    KPR_CONFIG="kubeProxyReplacement: true
-  k8sServiceHost: \"api.${CLUSTER_NAME}.${BASE_DOMAIN}\"
-  k8sServicePort: \"443\""
-else
-    KPR_CONFIG="kubeProxyReplacement: false"
-fi
-
-cat > "${CLIFE_TMP_DIR}/ciliumconfig.yaml" << EOF
+    cat > "${CLIFE_TMP_DIR}/ciliumconfig.yaml" << EOF
 apiVersion: cilium.io/v1alpha1
 kind: CiliumConfig
 metadata:
   labels:
     app.kubernetes.io/name: clife
   name: ciliumconfig
+  namespace: cilium
+spec:
+  cluster:
+    name: ${CLUSTER_NAME}
+    id: ${CLUSTER_ID}
+  securityContext:
+    privileged: true
+  ipam:
+    mode: "cluster-pool"
+    operator:
+      clusterPoolIPv4PodCIDRList:
+      - ${POD_CIDR}
+      clusterPoolIPv4MaskSize: ${HOST_PREFIX}
+  cni:
+    binPath: "/var/lib/cni/bin"
+    confPath: "/var/run/multus/cni/net.d"
+    exclusive: false
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+  hubble:
+    enabled: true
+  sessionAffinity: true
+  kubeProxyReplacement: true
+  k8sServiceHost: "api.${CLUSTER_NAME}.${BASE_DOMAIN}"
+  k8sServicePort: "443"
+  clusterHealthPort: 9940
+  tunnelPort: 4789
+EOF
+else
+    cat > "${CLIFE_TMP_DIR}/ciliumconfig.yaml" << EOF
+apiVersion: cilium.io/v1alpha1
+kind: CiliumConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: clife
+  name: ciliumconfig
+  namespace: cilium
 spec:
   cluster:
     name: ${CLUSTER_NAME}
@@ -211,14 +246,10 @@ spec:
     enabled: true
     serviceMonitor:
       enabled: true
-  operator:
-    prometheus:
-      enabled: true
-      serviceMonitor:
-        enabled: true
   hubble:
     enabled: true
-  ${KPR_CONFIG}
+  sessionAffinity: true
+  kubeProxyReplacement: false
   clusterHealthPort: 9940
   tunnelPort: 4789
   enterprise:
@@ -226,11 +257,12 @@ spec:
       approved:
       - CNIChainingMode
 EOF
+fi
 
 echo "  ✓ ciliumconfig.yaml"
 
 # -----------------------------------------------------------------------------
-# 3. cluster-network-02-config-local.yml
+# 3. cluster-network-02-config-local.yml (OpenShift Network Operator config)
 # -----------------------------------------------------------------------------
 echo "Generando cluster-network-02-config-local.yml..."
 
@@ -240,16 +272,18 @@ else
     DEPLOY_KUBE_PROXY="true"
 fi
 
+# Este archivo configura el OpenShift Network Operator para usar Cilium
+# Nombre según documentación Isovalent: cluster-network-02-config-local.yml
 cat > "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" << EOF
 apiVersion: operator.openshift.io/v1
 kind: Network
 metadata:
   name: cluster
 spec:
+  deployKubeProxy: ${DEPLOY_KUBE_PROXY}
   clusterNetwork:
   - cidr: ${POD_CIDR}
     hostPrefix: ${HOST_PREFIX}
-  deployKubeProxy: ${DEPLOY_KUBE_PROXY}
   externalIP:
     policy: {}
   networkType: Cilium
