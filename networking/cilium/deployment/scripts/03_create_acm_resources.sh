@@ -234,16 +234,11 @@ fi
 # -----------------------------------------------------------------------------
 echo "Generando ConfigMap con manifiestos CLife..."
 
-# Crear el ConfigMap con todos los archivos del directorio clife-tmp
-CONFIGMAP_DATA=""
-for file in "${CLIFE_TMP_DIR}"/*; do
-    if [[ -f "$file" ]]; then
-        filename=$(basename "$file")
-        # Escapar el contenido para YAML
-        content=$(cat "$file" | sed 's/^/    /')
-        CONFIGMAP_DATA="${CONFIGMAP_DATA}  ${filename}: |\n${content}\n"
-    fi
-done
+# IMPORTANTE: Para Hive/ACM, los manifiestos en el ConfigMap se copian al
+# directorio de instalación. El nombre de la key en el ConfigMap se usa
+# como nombre de archivo en el directorio manifests/.
+#
+# Referencia: https://github.com/openshift/hive/blob/master/docs/using-hive.md
 
 cat > "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << EOF
 apiVersion: v1
