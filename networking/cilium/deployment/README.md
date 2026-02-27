@@ -9,9 +9,14 @@ networking/cilium/deployment/
 ├── README.md                           # Este archivo
 ├── artifacts/                          # Artefactos offline (descargados)
 │   ├── clife/                          # CLife tar.gz
-│   ├── tools/                          # yq, jq, cilium, hubble CLI
-│   ├── images/                         # Lista de imágenes
+│   ├── tools/                          # yq, jq, cilium, hubble, skopeo, helm
+│   ├── images/                         # Imágenes en tar.gz + lista
+│   │   ├── cilium-images.tar.gz        # Imágenes de Cilium comprimidas
+│   │   └── images-list.txt             # Lista de imágenes
 │   ├── install-tools.sh                # Instala CLIs
+│   ├── save-images.sh                  # Guarda imágenes (con internet)
+│   ├── load-images.sh                  # Carga imágenes al registry
+│   ├── start-local-registry.sh         # Registry local con Podman
 │   └── versions.txt                    # Versiones descargadas
 ├── clusters/                           # Configuración por cluster
 │   ├── paas-arqlab/
@@ -24,8 +29,9 @@ networking/cilium/deployment/
 ├── scripts/
 │   ├── 00_download_artifacts.sh        # Descarga artefactos (con internet)
 │   ├── 00_env.sh                       # Carga configuración del cluster
+│   ├── 00_get_images.sh                # Genera lista de imágenes (air-gapped)
 │   ├── 01_download_clife.sh            # Prepara CLife (online/offline)
-│   ├── 02_generate_manifests.sh        # Genera manifiestos
+│   ├── 02_generate_manifests.sh        # Genera manifiestos (soporta air-gapped)
 │   ├── 03_create_acm_resources.sh      # Crea recursos en ACM
 │   ├── 04_verify_install.sh            # Verifica instalación
 │   ├── 05_connectivity_test.sh         # Tests de conectividad
@@ -35,6 +41,7 @@ networking/cilium/deployment/
 └── docs/
     ├── 00_subnetting_plan.md           # Plan de subredes para Cluster Mesh
     ├── 01_install_guide_acm.md         # Guía de instalación
+    ├── 02_install_guide_airgapped.md   # Guía para entornos air-gapped
     └── 02_install_ocp_cilium_acm_paas-arqlab.md
 ```
 
@@ -75,6 +82,39 @@ CLUSTER_NAME=paas-arqlab ./04_verify_install.sh
 
 # Tests
 CLUSTER_NAME=paas-arqlab ./05_connectivity_test.sh
+```
+
+### Opción 3: Instalación Air-Gapped
+
+Para entornos sin acceso a internet, ver la guía detallada: [docs/02_install_guide_airgapped.md](docs/02_install_guide_airgapped.md)
+
+```bash
+# === En máquina con internet ===
+cd scripts
+./00_download_artifacts.sh    # Descarga herramientas e imágenes
+
+# Subir a Git
+git add ../artifacts/
+git commit -m "Actualizar artefactos offline"
+git push
+
+# === En servidor air-gapped ===
+git clone <repo>
+cd networking/cilium/deployment
+
+# Instalar herramientas (yq, jq, skopeo, helm, etc.)
+sudo ./artifacts/install-tools.sh
+
+# Iniciar registry local con Podman
+./artifacts/start-local-registry.sh
+
+# Cargar imágenes de Cilium
+./artifacts/load-images.sh localhost:5000
+
+# Desplegar cluster
+export AIR_GAPPED=true
+export INTERNAL_REGISTRY="<IP-servidor>:5000"
+cd scripts && ./deploy.sh paas-arqlab
 ```
 
 ### Crear un nuevo cluster
@@ -126,10 +166,14 @@ cd scripts
 | Artefacto | Versión | Descripción |
 |-----------|---------|-------------|
 | CLife | 1.18.6 | Cilium Lifecycle Operator manifests |
-| yq | 4.40.5 | Procesador YAML |
+| yq | 4.40.5 | Procesador YAML (mikefarah/yq) |
 | jq | 1.7.1 | Procesador JSON |
 | cilium CLI | 0.16.4 | CLI para gestión de Cilium |
 | hubble CLI | 0.13.0 | CLI para observabilidad |
+| skopeo | 1.18.0 | Copia/gestión de imágenes |
+| helm | 3.14.0 | Gestor de paquetes Kubernetes |
+
+> **Nota**: Para air-gapped, las imágenes de Cilium se guardan en `artifacts/images/cilium-images.tar.gz`
 
 ## Clusters configurados
 
@@ -171,5 +215,6 @@ Ver [docs/00_subnetting_plan.md](docs/00_subnetting_plan.md) para el plan comple
 ## Referencias
 
 - [Isovalent — Install on OpenShift](https://docs.isovalent.com/ink/install/openshift.html)
+- [Isovalent — Air-Gapped Installation](https://docs.isovalent.com/ink/install/air-gapped.html)
 - [Red Hat — Certified CNI Plug-ins](https://access.redhat.com/documentation/en-us/openshift_container_platform/4.18/html/networking/cni-plug-in-certification-matrix)
 - [Cilium Cluster Mesh](https://docs.cilium.io/en/stable/network/clustermesh/)

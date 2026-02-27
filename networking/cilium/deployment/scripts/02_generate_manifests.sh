@@ -1,14 +1,33 @@
 #!/bin/bash
 # =============================================================================
 # Genera los manifiestos personalizados para el cluster
+# Soporta instalación air-gapped con registry interno
+#
 # Uso: CLUSTER_NAME=paas-arqlab ./02_generate_manifests.sh
+#
+# Variables adicionales para air-gapped:
+#   INTERNAL_REGISTRY - Registry interno para imágenes (ej: registry.internal.com)
+#   AIR_GAPPED=true   - Habilita configuración air-gapped
 # =============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/00_env.sh"
 
+# Configuración air-gapped
+AIR_GAPPED="${AIR_GAPPED:-false}"
+INTERNAL_REGISTRY="${INTERNAL_REGISTRY:-}"
+
 echo "=== Generando manifiestos para ${CLUSTER_NAME} (ID: ${CLUSTER_ID}) ==="
+if [[ "${AIR_GAPPED}" == "true" ]]; then
+    if [[ -z "${INTERNAL_REGISTRY}" ]]; then
+        echo "ERROR: AIR_GAPPED=true pero INTERNAL_REGISTRY no está definido"
+        echo "  Uso: AIR_GAPPED=true INTERNAL_REGISTRY=registry.example.com ./02_generate_manifests.sh"
+        exit 1
+    fi
+    echo "  Modo: AIR-GAPPED"
+    echo "  Registry interno: ${INTERNAL_REGISTRY}"
+fi
 
 mkdir -p "${MANIFESTS_DIR}"
 mkdir -p "${CLIFE_TMP_DIR}"
@@ -178,6 +197,38 @@ echo "Generando ciliumconfig.yaml..."
 # Según docs.isovalent.com/ink/install/openshift.html:
 # - Con KPR: definir k8sServiceHost y k8sServicePort, NO usar chainingMode
 # - Sin KPR: usar chainingMode: portmap y featureGate
+#
+# Para air-gapped: agregar configuración de registry interno
+# Según docs.isovalent.com/ink/install/air-gapped.html
+
+# Preparar sección de imágenes para air-gapped
+if [[ "${AIR_GAPPED}" == "true" ]]; then
+    IMAGE_CONFIG=$(cat << IMGEOF
+  image:
+    repository: "${INTERNAL_REGISTRY}/cilium"
+  operator:
+    image:
+      repository: "${INTERNAL_REGISTRY}/operator"
+  envoy:
+    image:
+      repository: "${INTERNAL_REGISTRY}/cilium-envoy"
+  hubble:
+    relay:
+      image:
+        repository: "${INTERNAL_REGISTRY}/hubble-relay"
+    ui:
+      frontend:
+        image:
+          repository: "${INTERNAL_REGISTRY}/hubble-ui-enterprise"
+      backend:
+        image:
+          repository: "${INTERNAL_REGISTRY}/hubble-ui-enterprise-backend"
+IMGEOF
+)
+else
+    IMAGE_CONFIG=""
+fi
+
 if [[ "${ENABLE_KPR}" == "true" ]]; then
     cat > "${CLIFE_TMP_DIR}/ciliumconfig.yaml" << EOF
 apiVersion: cilium.io/v1alpha1
@@ -257,6 +308,12 @@ spec:
       approved:
       - CNIChainingMode
 EOF
+fi
+
+# Agregar configuración de imágenes para air-gapped
+if [[ -n "${IMAGE_CONFIG}" ]]; then
+    echo "${IMAGE_CONFIG}" >> "${CLIFE_TMP_DIR}/ciliumconfig.yaml"
+    echo "  ✓ Configuración air-gapped agregada a ciliumconfig.yaml"
 fi
 
 echo "  ✓ ciliumconfig.yaml"

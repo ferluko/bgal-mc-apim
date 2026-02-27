@@ -1,11 +1,14 @@
 # Instalación de OpenShift con Cilium vía RHACM
 
+> **NOTA**: Para instalaciones en entornos sin acceso a internet, ver [Guía Air-Gapped](./02_install_guide_airgapped.md)
+
 ## Prerrequisitos
 
 - RHACM desplegado y configurado para vSphere
 - Acceso al hub de ACM (`oc` configurado)
 - Manifiestos CLife descargados
 - Cluster anterior eliminado (para reutilizar recursos)
+- Para air-gapped: imágenes copiadas a registry interno (ver guía específica)
 
 ## Flujo de instalación
 
@@ -96,4 +99,6 @@ Verificar que `ciliumconfig.yaml` y `cluster-network-02-config-local.yml` tengan
 ## Referencias
 
 - [Isovalent — Install on OpenShift (RHACM)](https://docs.isovalent.com/ink/install/openshift.html)
+- [Isovalent — Air-Gapped Installation](https://docs.isovalent.com/ink/install/air-gapped.html)
 - [Plan de subnetting](./00_subnetting_plan.md)
+- [Guía Air-Gapped](./02_install_guide_airgapped.md)
