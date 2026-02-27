@@ -328,9 +328,6 @@ INCLUDED_COUNT=0
 EXCLUDED_COUNT=0
 
 echo "  Procesando archivos YAML del directorio: ${CLIFE_EXTRACT_DIR}"
-echo "  Archivos encontrados:"
-ls -1 "${CLIFE_EXTRACT_DIR}"/*.yaml 2>/dev/null || echo "    (ninguno con extensión .yaml)"
-ls -1 "${CLIFE_EXTRACT_DIR}"/*.yml 2>/dev/null || echo "    (ninguno con extensión .yml)"
 
 for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
     if [[ -f "$file" ]]; then
@@ -342,7 +339,7 @@ for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
             if [[ "$filename" == "$excluded" ]]; then
                 SKIP_FILE=true
                 echo "  ⊘ Excluyendo ${filename} (requiere OLM)"
-                ((EXCLUDED_COUNT++))
+                EXCLUDED_COUNT=$((EXCLUDED_COUNT + 1))
                 break
             fi
         done
@@ -352,7 +349,7 @@ for file in "${CLIFE_EXTRACT_DIR}"/*.yaml "${CLIFE_EXTRACT_DIR}"/*.yml; do
             echo "  ${filename}: |" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
             # Indentar contenido con 4 espacios
             sed 's/^/    /' "$file" >> "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml"
-            ((INCLUDED_COUNT++))
+            INCLUDED_COUNT=$((INCLUDED_COUNT + 1))
         fi
     fi
 done

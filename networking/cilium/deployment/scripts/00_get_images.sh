@@ -162,7 +162,7 @@ cat >> "${MIRROR_SCRIPT}" << 'MIRROR_FOOTER'
 FAILED=0
 for img in "${IMAGES[@]}"; do
     if ! mirror_image "$img"; then
-        ((FAILED++))
+        FAILED=$((FAILED + 1))
     fi
 done
 
