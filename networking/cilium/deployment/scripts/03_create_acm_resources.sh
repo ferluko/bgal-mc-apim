@@ -291,10 +291,12 @@ if [[ "${ENABLE_KPR}" == "true" ]]; then
     echo "  Configurando API server para KPR: ${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
     
     # Modificar el Deployment de CLife
+    # Según docs.isovalent.com, las variables deben estar al INICIO del array env
     DEPLOYMENT_FILE="${CLIFE_EXTRACT_DIR}/apps_v1_deployment_clife-controller-manager.yaml"
     if [[ -f "${DEPLOYMENT_FILE}" ]]; then
         if command -v yq &>/dev/null; then
-            yq -i '(.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}]' "${DEPLOYMENT_FILE}"
+            # Insertar al INICIO del array env (prepend) según documentación Isovalent
+            yq -i '(.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env = [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}] + ((.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env // [])' "${DEPLOYMENT_FILE}"
             echo "  ✓ Variables KUBERNETES_SERVICE_HOST/PORT agregadas al Deployment de CLife"
         else
             echo "  ⚠ yq no disponible - agregar manualmente las variables de entorno al Deployment"
@@ -305,7 +307,7 @@ if [[ "${ENABLE_KPR}" == "true" ]]; then
     SUBSCRIPTION_FILE="${CLIFE_EXTRACT_DIR}/subscription.yaml"
     if [[ -f "${SUBSCRIPTION_FILE}" ]] && [[ "${INCLUDE_OLM_MANIFESTS:-false}" == "true" ]]; then
         if command -v yq &>/dev/null; then
-            # Usar = en lugar de += porque subscription.yaml no tiene .spec.config.env por defecto
+            # Crear .spec.config.env con las variables (subscription no tiene env por defecto)
             yq -i '.spec.config.env = [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}]' "${SUBSCRIPTION_FILE}"
             echo "  ✓ Variables KUBERNETES_SERVICE_HOST/PORT agregadas a la Subscription"
         fi
@@ -317,7 +319,8 @@ elif [[ -n "${CLIFE_API_HOST:-}" ]]; then
     if [[ -f "${DEPLOYMENT_FILE}" ]]; then
         if command -v yq &>/dev/null; then
             CLIFE_API_PORT="${CLIFE_API_PORT:-6443}"
-            yq -i '(.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${CLIFE_API_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${CLIFE_API_PORT}"'"}]' "${DEPLOYMENT_FILE}"
+            # Insertar al INICIO del array env (prepend)
+            yq -i '(.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env = [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${CLIFE_API_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${CLIFE_API_PORT}"'"}] + ((.spec.template.spec.containers[] | select(has("name")) | select(.name == "manager")).env // [])' "${DEPLOYMENT_FILE}"
             echo "  ✓ Variables KUBERNETES_SERVICE_HOST=${CLIFE_API_HOST}:${CLIFE_API_PORT} agregadas al Deployment"
         else
             echo "  ⚠ yq no disponible, las variables de entorno deben agregarse manualmente"
@@ -633,19 +636,46 @@ echo "  watch 'kubectl -n ${ACM_NAMESPACE} get clusterdeployment,pods'"
 echo "  kubectl -n ${ACM_NAMESPACE} logs -f job/${CLUSTER_NAME}-0-provision"
 echo "  ./04_verify_install.sh"
 echo ""
-echo "============================================="
-echo "  NOTA: Manifiestos OLM Excluidos"
-echo "============================================="
-echo ""
-echo "Los siguientes archivos fueron EXCLUIDOS del ConfigMap porque"
-echo "requieren OLM funcionando (no disponible durante bootstrap):"
-echo "  - subscription.yaml"
-echo "  - operatorgroup.yaml"
-echo ""
-echo "El operador CLife se instala directamente via Deployment con"
-echo "hostNetwork: true, lo que permite funcionar sin CNI durante"
-echo "el bootstrap del cluster."
-echo ""
-echo "Post-instalación (Day 2), si deseas gestionar CLife via OLM:"
-echo "  1. Los archivos excluidos están en: ${CLIFE_EXTRACT_DIR}/"
-echo "  2. Aplicar manualmente después de que el cluster esté operativo"
+# Mostrar nota sobre manifiestos OLM según configuración
+if [[ "${INCLUDE_OLM_MANIFESTS:-false}" == "true" ]]; then
+    echo "============================================="
+    echo "  NOTA: Manifiestos OLM Incluidos"
+    echo "============================================="
+    echo ""
+    echo "Se incluyeron TODOS los manifiestos de CLife, incluyendo:"
+    echo "  - subscription.yaml"
+    echo "  - operatorgroup.yaml"
+    echo ""
+    echo "Estos manifiestos requieren OLM funcionando. Usar esta"
+    echo "configuración solo para instalaciones Day 2 o cuando"
+    echo "OLM ya esté operativo en el cluster."
+    echo ""
+    if [[ "${ENABLE_KPR}" == "true" ]]; then
+        echo "Las variables KUBERNETES_SERVICE_HOST/PORT fueron agregadas a:"
+        echo "  - Deployment de CLife (apps_v1_deployment_clife-controller-manager.yaml)"
+        echo "  - Subscription de CLife (subscription.yaml)"
+        echo ""
+    fi
+else
+    echo "============================================="
+    echo "  NOTA: Manifiestos OLM Excluidos"
+    echo "============================================="
+    echo ""
+    echo "Los siguientes archivos fueron EXCLUIDOS del ConfigMap porque"
+    echo "requieren OLM funcionando (no disponible durante bootstrap):"
+    echo "  - subscription.yaml"
+    echo "  - operatorgroup.yaml"
+    echo ""
+    echo "El operador CLife se instala directamente via Deployment con"
+    echo "hostNetwork: true, lo que permite funcionar sin CNI durante"
+    echo "el bootstrap del cluster."
+    echo ""
+    if [[ "${ENABLE_KPR}" == "true" ]]; then
+        echo "Las variables KUBERNETES_SERVICE_HOST/PORT fueron agregadas al:"
+        echo "  - Deployment de CLife (apps_v1_deployment_clife-controller-manager.yaml)"
+        echo ""
+    fi
+    echo "Post-instalación (Day 2), si deseas gestionar CLife via OLM:"
+    echo "  1. Los archivos excluidos están en: ${CLIFE_EXTRACT_DIR}/"
+    echo "  2. Aplicar manualmente después de que el cluster esté operativo"
+fi
