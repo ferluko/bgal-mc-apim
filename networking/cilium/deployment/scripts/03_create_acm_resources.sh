@@ -272,18 +272,28 @@ if [[ -f "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" ]]; then
     echo "  ✓ cluster-network-02-config-local.yml copiado"
 fi
 
-# Si KPR está habilitado, modificar el Deployment de CLife para agregar env vars
-# Según documentación: https://docs.isovalent.com/ink/install/openshift.html
-if [[ "${ENABLE_KPR}" == "true" ]]; then
-    echo "  Configurando KPR en el Deployment de CLife..."
+# NOTA: NO se agregan KUBERNETES_SERVICE_HOST/PORT al Deployment de CLife.
+# 
+# Razón: Durante el bootstrap, CLife necesita conectarse al API server local
+# (bootstrap node), no al API externo del cluster. Si se configura el API
+# externo, CLife falla porque no hay CNI/red funcionando aún.
+#
+# CLife usará automáticamente el service account token y el API server interno.
+# La configuración de KPR (kubeProxyReplacement) se aplica en el CiliumConfig,
+# no en el Deployment de CLife.
+#
+# Si necesitas forzar una configuración específica del API server para CLife,
+# puedes hacerlo manualmente post-despliegue o usar:
+#   CLIFE_API_HOST=<ip> CLIFE_API_PORT=<port> ./03_create_acm_resources.sh
+
+if [[ -n "${CLIFE_API_HOST:-}" ]]; then
+    echo "  Configurando API server personalizado para CLife..."
     DEPLOYMENT_FILE="${CLIFE_EXTRACT_DIR}/apps_v1_deployment_clife-controller-manager.yaml"
     if [[ -f "${DEPLOYMENT_FILE}" ]]; then
-        # Usar yq para agregar las variables de entorno si está disponible
         if command -v yq &>/dev/null; then
-            KUBERNETES_SERVICE_HOST="api.${CLUSTER_NAME}.${BASE_DOMAIN}"
-            KUBERNETES_SERVICE_PORT="443"
-            yq -i '(.spec.template.spec.containers[] | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${KUBERNETES_SERVICE_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${KUBERNETES_SERVICE_PORT}"'"}]' "${DEPLOYMENT_FILE}"
-            echo "  ✓ Variables KUBERNETES_SERVICE_HOST/PORT agregadas al Deployment"
+            CLIFE_API_PORT="${CLIFE_API_PORT:-6443}"
+            yq -i '(.spec.template.spec.containers[] | select(.name == "manager")).env += [{"name": "KUBERNETES_SERVICE_HOST", "value": "'"${CLIFE_API_HOST}"'"}, {"name": "KUBERNETES_SERVICE_PORT", "value": "'"${CLIFE_API_PORT}"'"}]' "${DEPLOYMENT_FILE}"
+            echo "  ✓ Variables KUBERNETES_SERVICE_HOST=${CLIFE_API_HOST}:${CLIFE_API_PORT} agregadas al Deployment"
         else
             echo "  ⚠ yq no disponible, las variables de entorno deben agregarse manualmente"
         fi
@@ -304,12 +314,21 @@ echo "Generando ConfigMap con manifiestos CLife..."
 # como RELATED_IMAGE_*, por lo que funciona durante el bootstrap sin OLM.
 #
 # Referencia: https://docs.isovalent.com/ink/install/openshift.html
+#
+# Para incluir los manifiestos de OLM (Day 2 / post-bootstrap):
+#   INCLUDE_OLM_MANIFESTS=true CLUSTER_NAME=xxx ./03_create_acm_resources.sh
 
 # Lista de archivos a EXCLUIR del ConfigMap (requieren OLM funcionando)
-EXCLUDED_FILES=(
-    "subscription.yaml"
-    "operatorgroup.yaml"
-)
+# Si INCLUDE_OLM_MANIFESTS=true, no se excluye nada
+if [[ "${INCLUDE_OLM_MANIFESTS:-false}" == "true" ]]; then
+    echo "  ⚠ INCLUDE_OLM_MANIFESTS=true - Incluyendo manifiestos OLM (subscription, operatorgroup)"
+    EXCLUDED_FILES=()
+else
+    EXCLUDED_FILES=(
+        "subscription.yaml"
+        "operatorgroup.yaml"
+    )
+fi
 
 cat > "${ACM_MANIFESTS_DIR}/06-clife-manifests-configmap.yaml" << 'CONFIGMAP_HEADER'
 apiVersion: v1
