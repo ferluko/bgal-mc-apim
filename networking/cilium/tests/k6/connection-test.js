@@ -164,9 +164,9 @@ export function handleSummary(data) {
 
   report += '└────────────────────────┴─────────┴─────────┴─────────┴─────────┴─────────┘\n';
 
-  const total = metrics.connections_total?.values?.count || 0;
-  const failed = metrics.connections_failed?.values?.count || 0;
-  const errRate = metrics.connection_error_rate?.values?.rate || 0;
+  const total = (metrics.connections_total && metrics.connections_total.values && metrics.connections_total.values.count) || 0;
+  const failed = (metrics.connections_failed && metrics.connections_failed.values && metrics.connections_failed.values.count) || 0;
+  const errRate = (metrics.connection_error_rate && metrics.connection_error_rate.values && metrics.connection_error_rate.values.rate) || 0;
 
   report += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -252,10 +252,10 @@ function generateReport(data) {
   report += '└────────────────────────────────┴─────────┴─────────┴─────────┴─────────┴─────────┘\n';
 
   // Estadísticas de requests
-  const totalReqs = metrics.requests_total?.values?.count || 0;
-  const successReqs = metrics.requests_success?.values?.count || 0;
-  const failedReqs = metrics.requests_failed?.values?.count || 0;
-  const errRate = metrics.error_rate?.values?.rate || 0;
+  const totalReqs = (metrics.requests_total && metrics.requests_total.values && metrics.requests_total.values.count) || 0;
+  const successReqs = (metrics.requests_success && metrics.requests_success.values && metrics.requests_success.values.count) || 0;
+  const failedReqs = (metrics.requests_failed && metrics.requests_failed.values && metrics.requests_failed.values.count) || 0;
+  const errRate = (metrics.error_rate && metrics.error_rate.values && metrics.error_rate.values.rate) || 0;
 
   report += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
