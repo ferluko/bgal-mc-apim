@@ -173,7 +173,7 @@ echo "Descargando certificados de vSphere (${VSPHERE_SERVER})..."
 VSPHERE_CERT_FILE="${MANIFESTS_DIR}/vsphere-ca.crt"
 
 # Intentar descargar el certificado del vCenter
-if openssl s_client -connect "${VSPHERE_SERVER}:6443" -showcerts </dev/null 2>/dev/null | \
+if openssl s_client -connect "${VSPHERE_SERVER}:443" -showcerts </dev/null 2>/dev/null | \
    openssl x509 -outform PEM > "${VSPHERE_CERT_FILE}" 2>/dev/null && \
    [[ -s "${VSPHERE_CERT_FILE}" ]]; then
     
