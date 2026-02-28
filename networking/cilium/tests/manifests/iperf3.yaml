@@ -1,0 +1,66 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iperf3-server
+  namespace: network-perf-test
+  labels:
+    app: iperf3-server
+    role: server
+spec:
+  containers:
+  - name: iperf3
+    image: networkstatic/iperf3:latest
+    command: ["iperf3", "-s", "-p", "5201"]
+    ports:
+    - containerPort: 5201
+      name: iperf
+    resources:
+      requests:
+        cpu: 500m
+        memory: 256Mi
+      limits:
+        cpu: 2000m
+        memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf3-server
+  namespace: network-perf-test
+spec:
+  type: ClusterIP
+  selector:
+    app: iperf3-server
+  ports:
+  - port: 5201
+    targetPort: 5201
+    name: iperf
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iperf3-client
+  namespace: network-perf-test
+  labels:
+    app: iperf3-client
+    role: client
+spec:
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: iperf3-server
+        topologyKey: kubernetes.io/hostname
+  containers:
+  - name: iperf3
+    image: networkstatic/iperf3:latest
+    command: ["sleep", "infinity"]
+    resources:
+      requests:
+        cpu: 500m
+        memory: 256Mi
+      limits:
+        cpu: 2000m
+        memory: 512Mi
