@@ -57,12 +57,14 @@ allowHostPID: false
 allowHostPorts: true
 allowPrivilegeEscalation: false
 allowPrivilegedContainer: false
-allowedCapabilities: null
+allowedCapabilities:
+- NET_RAW
+- NET_ADMIN
 defaultAddCapabilities: null
 fsGroup:
   type: MustRunAs
 groups: []
-priority: null
+priority: 10
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
 - KILL
@@ -90,9 +92,17 @@ print_status ok "SecurityContextConstraints 'cilium-test' creado"
 # Crear namespace de test
 TEST_NS="cilium-test-1"
 oc create ns ${TEST_NS} --dry-run=client -o yaml | oc apply -f -
+
+# Asignar SCC a todos los ServiceAccounts del namespace de test
 oc adm policy add-scc-to-group cilium-test system:serviceaccounts:${TEST_NS}
 
-print_status ok "Namespace '${TEST_NS}' preparado"
+# Crear y asignar SCC a ServiceAccounts específicos usados por cilium connectivity test
+for SA in default client client2 echo-same-node echo-other-node host-netns host-netns-non-cilium; do
+    oc -n ${TEST_NS} create serviceaccount ${SA} --dry-run=client -o yaml | oc apply -f -
+    oc adm policy add-scc-to-user cilium-test -z ${SA} -n ${TEST_NS}
+done
+
+print_status ok "Namespace '${TEST_NS}' preparado con SCC asignado"
 
 echo ""
 
