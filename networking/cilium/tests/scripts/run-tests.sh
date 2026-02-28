@@ -314,12 +314,12 @@ run_iperf3_tests() {
     IPERF_SERVER_IP=$($OC get pod iperf3-server -n "$NAMESPACE" -o jsonpath='{.status.podIP}')
     
     echo ""
-    echo "=== PRUEBA IPERF3: TCP THROUGHPUT ==="
-    $OC exec -n "$NAMESPACE" iperf3-client -- iperf3 -c "$IPERF_SERVER_IP" -t 30 -P 4
+    echo "=== PRUEBA IPERF3: TCP THROUGHPUT (10s, 4 streams) ==="
+    timeout 60 $OC exec -n "$NAMESPACE" iperf3-client -- iperf3 -c "$IPERF_SERVER_IP" -t 10 -P 4 || log_warn "iperf3 TCP timeout o error"
     
     echo ""
-    echo "=== PRUEBA IPERF3: UDP THROUGHPUT ==="
-    $OC exec -n "$NAMESPACE" iperf3-client -- iperf3 -c "$IPERF_SERVER_IP" -t 30 -u -b 10G
+    echo "=== PRUEBA IPERF3: UDP THROUGHPUT (10s) ==="
+    timeout 60 $OC exec -n "$NAMESPACE" iperf3-client -- iperf3 -c "$IPERF_SERVER_IP" -t 10 -u -b 1G || log_warn "iperf3 UDP timeout o error"
     
     log_success "Pruebas iperf3 completadas"
 }
@@ -330,22 +330,22 @@ run_netperf_tests() {
     NETPERF_SERVER_IP=$($OC get pod netperf-server -n "$NAMESPACE" -o jsonpath='{.status.podIP}')
     
     echo ""
-    echo "=== PRUEBA NETPERF: TCP_RR (Request/Response Latency) ==="
-    $OC exec -n "$NAMESPACE" netperf-client -- netperf -H "$NETPERF_SERVER_IP" -t TCP_RR -l 30 -- -o min_latency,mean_latency,max_latency,p99_latency,transaction_rate
+    echo "=== PRUEBA NETPERF: TCP_RR (Request/Response Latency, 10s) ==="
+    timeout 60 $OC exec -n "$NAMESPACE" netperf-client -- netperf -H "$NETPERF_SERVER_IP" -t TCP_RR -l 10 || log_warn "netperf TCP_RR timeout o error"
     
     echo ""
-    echo "=== PRUEBA NETPERF: TCP_CRR (Connect/Request/Response) ==="
-    $OC exec -n "$NAMESPACE" netperf-client -- netperf -H "$NETPERF_SERVER_IP" -t TCP_CRR -l 30 -- -o min_latency,mean_latency,max_latency,transaction_rate
+    echo "=== PRUEBA NETPERF: TCP_CRR (Connect/Request/Response, 10s) ==="
+    timeout 60 $OC exec -n "$NAMESPACE" netperf-client -- netperf -H "$NETPERF_SERVER_IP" -t TCP_CRR -l 10 || log_warn "netperf TCP_CRR timeout o error"
     
     echo ""
-    echo "=== PRUEBA NETPERF: TCP_STREAM (Throughput) ==="
-    $OC exec -n "$NAMESPACE" netperf-client -- netperf -H "$NETPERF_SERVER_IP" -t TCP_STREAM -l 30
+    echo "=== PRUEBA NETPERF: TCP_STREAM (Throughput, 10s) ==="
+    timeout 60 $OC exec -n "$NAMESPACE" netperf-client -- netperf -H "$NETPERF_SERVER_IP" -t TCP_STREAM -l 10 || log_warn "netperf TCP_STREAM timeout o error"
     
     log_success "Pruebas netperf completadas"
 }
 
 run_traceroute_analysis() {
-    log_info "Analizando saltos de red (hops)..."
+    log_info "Analizando conectividad de red..."
     
     # Crear pod de debug si no existe
     $OC run debug-network --image=nicolaka/netshoot --restart=Never -n "$NAMESPACE" --command -- sleep 3600 2>/dev/null || true
@@ -356,17 +356,25 @@ run_traceroute_analysis() {
     SERVICE_IP=$($OC get svc perf-target-clusterip -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}')
     
     echo ""
-    echo "=== TRACEROUTE A POD ($TARGET_POD_IP) ==="
-    $OC exec -n "$NAMESPACE" debug-network -- traceroute -n -m 10 "$TARGET_POD_IP" 2>/dev/null || echo "traceroute no disponible"
+    echo "=== CONECTIVIDAD A POD ($TARGET_POD_IP) ==="
+    echo "Ping:"
+    $OC exec -n "$NAMESPACE" debug-network -- ping -c 3 -W 2 "$TARGET_POD_IP" 2>/dev/null || echo "ping falló"
+    echo ""
+    echo "HTTP check:"
+    $OC exec -n "$NAMESPACE" debug-network -- curl -s -o /dev/null -w "HTTP %{http_code} - %{time_total}s\n" "http://${TARGET_POD_IP}:8080/" 2>/dev/null || echo "curl falló"
     
     echo ""
-    echo "=== TRACEROUTE A SERVICE CLUSTERIP ($SERVICE_IP) ==="
-    $OC exec -n "$NAMESPACE" debug-network -- traceroute -n -m 10 "$SERVICE_IP" 2>/dev/null || echo "traceroute no disponible"
+    echo "=== CONECTIVIDAD A SERVICE CLUSTERIP ($SERVICE_IP) ==="
+    echo "HTTP check (5 requests para ver load balancing):"
+    for i in 1 2 3 4 5; do
+        RESPONSE=$($OC exec -n "$NAMESPACE" debug-network -- curl -s -o /dev/null -w "%{http_code} %{time_total}s" "http://${SERVICE_IP}:8080/" 2>/dev/null || echo "failed")
+        echo "  Request $i: $RESPONSE"
+    done
     
     # Limpiar pod de debug
     $OC delete pod debug-network -n "$NAMESPACE" --ignore-not-found=true &>/dev/null
     
-    log_success "Análisis de hops completado"
+    log_success "Análisis de conectividad completado"
 }
 
 collect_cilium_metrics() {
@@ -376,19 +384,46 @@ collect_cilium_metrics() {
     
     log_info "Recolectando métricas de Cilium..."
     
-    CILIUM_POD=$($OC get pods -n openshift-cilium -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}')
+    # Detectar namespace de Cilium
+    CILIUM_NS=""
+    for ns in cilium openshift-cilium kube-system; do
+        if $OC get pods -n "$ns" -l k8s-app=cilium -o name 2>/dev/null | grep -q pod; then
+            CILIUM_NS="$ns"
+            break
+        fi
+        if $OC get pods -n "$ns" -l app.kubernetes.io/name=cilium-agent -o name 2>/dev/null | grep -q pod; then
+            CILIUM_NS="$ns"
+            break
+        fi
+    done
+    
+    if [ -z "$CILIUM_NS" ]; then
+        log_warn "No se encontró namespace de Cilium"
+        return
+    fi
+    
+    log_info "Cilium namespace: $CILIUM_NS"
+    
+    CILIUM_POD=$($OC get pods -n "$CILIUM_NS" -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
+                 $OC get pods -n "$CILIUM_NS" -l app.kubernetes.io/name=cilium-agent -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    
+    if [ -z "$CILIUM_POD" ]; then
+        log_warn "No se encontró pod de Cilium agent"
+        return
+    fi
     
     echo ""
     echo "=== CILIUM STATUS ==="
-    $OC exec -n openshift-cilium "$CILIUM_POD" -- cilium status --verbose
+    $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium status --brief 2>/dev/null || echo "No disponible"
+    
+    echo ""
+    echo "=== CILIUM SERVICE LIST (perf-target) ==="
+    $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium service list 2>/dev/null | grep -E "ID|perf-target" | head -15 || echo "No disponible"
     
     echo ""
     echo "=== CILIUM BPF LB LIST ==="
-    $OC exec -n openshift-cilium "$CILIUM_POD" -- cilium bpf lb list 2>/dev/null || echo "No disponible"
-    
-    echo ""
-    echo "=== CILIUM BPF CT LIST (primeros 20) ==="
-    $OC exec -n openshift-cilium "$CILIUM_POD" -- cilium bpf ct list global 2>/dev/null | head -20 || echo "No disponible"
+    SERVICE_IP=$($OC get svc perf-target-clusterip -n "$NAMESPACE" -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+    $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium bpf lb list 2>/dev/null | grep -E "SERVICE|$SERVICE_IP" | head -10 || echo "No disponible"
     
     log_success "Métricas de Cilium recolectadas"
 }
