@@ -191,12 +191,21 @@ echo "                              THROUGHPUT (iperf3)                         
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Buscar throughput TCP en los logs
-cilium_tcp=$(grep -A2 "TCP THROUGHPUT" "$CILIUM_LOG" 2>/dev/null | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" | tail -1 || echo "N/A")
-ovn_tcp=$(grep -A2 "TCP THROUGHPUT" "$OVN_LOG" 2>/dev/null | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" | tail -1 || echo "N/A")
+# Buscar throughput TCP en los logs (línea [SUM]...receiver)
+cilium_tcp=$(grep -E "\[SUM\].*receiver" "$CILIUM_LOG" 2>/dev/null | grep -v "%" | head -1 | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" || echo "N/A")
+ovn_tcp=$(grep -E "\[SUM\].*receiver" "$OVN_LOG" 2>/dev/null | grep -v "%" | head -1 | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" || echo "N/A")
 
-cilium_udp=$(grep -A2 "UDP THROUGHPUT" "$CILIUM_LOG" 2>/dev/null | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" | tail -1 || echo "N/A")
-ovn_udp=$(grep -A2 "UDP THROUGHPUT" "$OVN_LOG" 2>/dev/null | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" | tail -1 || echo "N/A")
+# Buscar throughput UDP (línea con % de pérdida indica UDP)
+cilium_udp=$(grep -E "\[SUM\].*receiver.*%" "$CILIUM_LOG" 2>/dev/null | head -1 | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" || echo "N/A")
+ovn_udp=$(grep -E "\[SUM\].*receiver.*%" "$OVN_LOG" 2>/dev/null | head -1 | grep -oE "[0-9]+\.?[0-9]* [GM]bits/sec" || echo "N/A")
+
+# Si no hay línea [SUM], buscar la última línea con Gbits/sec del bloque TCP
+if [ "$cilium_tcp" == "N/A" ] || [ -z "$cilium_tcp" ]; then
+    cilium_tcp=$(grep -A50 "TCP THROUGHPUT" "$CILIUM_LOG" 2>/dev/null | grep -E "[0-9]+\.?[0-9]* Gbits/sec" | tail -1 | grep -oE "[0-9]+\.?[0-9]* Gbits/sec" || echo "N/A")
+fi
+if [ "$ovn_tcp" == "N/A" ] || [ -z "$ovn_tcp" ]; then
+    ovn_tcp=$(grep -A50 "TCP THROUGHPUT" "$OVN_LOG" 2>/dev/null | grep -E "[0-9]+\.?[0-9]* Gbits/sec" | tail -1 | grep -oE "[0-9]+\.?[0-9]* Gbits/sec" || echo "N/A")
+fi
 
 printf "${BOLD}%-32s %15s %15s${NC}\n" "Métrica" "Cilium" "OVN"
 printf "%-32s %15s %15s\n" "--------------------------------" "---------------" "---------------"
@@ -233,15 +242,26 @@ for scenario in "${scenarios[@]}"; do
     # P95 está en posición 3
     cilium_p95=$(extract_metric "$CILIUM_LOG" "$scenario" 3)
     ovn_p95=$(extract_metric "$OVN_LOG" "$scenario" 3)
-    diff=$(calc_diff "$cilium_p95" "$ovn_p95")
     
-    if [[ "$diff" != "N/A" ]]; then
-        if (( $(echo "$diff > 5" | bc -l 2>/dev/null || echo 0) )); then
-            ((cilium_wins++))
-        elif (( $(echo "$diff < -5" | bc -l 2>/dev/null || echo 0) )); then
-            ((ovn_wins++))
-        else
-            ((ties++))
+    if [[ "$cilium_p95" != "N/A" ]] && [[ "$ovn_p95" != "N/A" ]]; then
+        # Comparar directamente los valores numéricos
+        cilium_val=$(echo "$cilium_p95" | sed 's/[^0-9.]//g')
+        ovn_val=$(echo "$ovn_p95" | sed 's/[^0-9.]//g')
+        
+        if [ -n "$cilium_val" ] && [ -n "$ovn_val" ]; then
+            # Usar awk para comparación de punto flotante
+            result=$(awk -v c="$cilium_val" -v o="$ovn_val" 'BEGIN {
+                diff = ((o - c) / c) * 100
+                if (diff > 5) print "cilium"
+                else if (diff < -5) print "ovn"
+                else print "tie"
+            }')
+            
+            case "$result" in
+                "cilium") cilium_wins=$((cilium_wins + 1)) ;;
+                "ovn") ovn_wins=$((ovn_wins + 1)) ;;
+                "tie") ties=$((ties + 1)) ;;
+            esac
         fi
     fi
 done
