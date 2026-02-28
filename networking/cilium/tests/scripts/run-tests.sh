@@ -267,7 +267,7 @@ spec:
         - name: CNI_TYPE
           value: "$CNI_TYPE"
         - name: TARGET_PORT
-          value: "80"
+          value: "8080"
         volumeMounts:
         - name: scripts
           mountPath: /scripts

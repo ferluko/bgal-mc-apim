@@ -48,7 +48,7 @@ const SERVICE_CLUSTERIP = __ENV.SERVICE_CLUSTERIP || 'perf-target-clusterip.netw
 const NODE_IP = __ENV.NODE_IP || '127.0.0.1';
 const NODE_PORT = __ENV.NODE_PORT || '30080';
 const CNI_TYPE = __ENV.CNI_TYPE || 'Unknown';
-const TARGET_PORT = __ENV.TARGET_PORT || '80';
+const TARGET_PORT = __ENV.TARGET_PORT || '8080';
 
 export const options = {
   scenarios: {
