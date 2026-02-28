@@ -79,24 +79,43 @@ echo ""
 
 while read -r pod_name pod_ip node_name; do
     if [ -n "$pod_ip" ]; then
-        echo "--- Traceroute a $pod_name ($pod_ip) en $node_name ---"
-        $OC exec -n "$NAMESPACE" debug-hops -- traceroute -n -m 10 -w 2 "$pod_ip" 2>/dev/null || echo "traceroute falló"
+        echo "--- Conectividad a $pod_name ($pod_ip) en $node_name ---"
         
-        # Contar hops
-        HOPS=$($OC exec -n "$NAMESPACE" debug-hops -- traceroute -n -m 10 -w 2 "$pod_ip" 2>/dev/null | grep -c "^[[:space:]]*[0-9]" || echo "0")
-        echo -e "${GREEN}Hops: $HOPS${NC}"
+        # Usar ping como alternativa (más confiable con eBPF)
+        echo "Ping test:"
+        $OC exec -n "$NAMESPACE" debug-hops -- ping -c 3 -W 2 "$pod_ip" 2>/dev/null || echo "ping falló"
+        
+        # Intentar traceroute con TCP en lugar de ICMP
+        echo ""
+        echo "Traceroute TCP (puerto 8080):"
+        $OC exec -n "$NAMESPACE" debug-hops -- traceroute -T -p 8080 -n -m 10 -w 2 "$pod_ip" 2>/dev/null || \
+        $OC exec -n "$NAMESPACE" debug-hops -- tracepath -n "$pod_ip" 2>/dev/null || \
+        echo "traceroute/tracepath no disponible o bloqueado por eBPF"
+        
+        # HTTP check para verificar conectividad real
+        echo ""
+        echo "HTTP check:"
+        $OC exec -n "$NAMESPACE" debug-hops -- curl -s -o /dev/null -w "HTTP %{http_code} - %{time_total}s\n" "http://${pod_ip}:8080/" 2>/dev/null || echo "curl falló"
         echo ""
     fi
 done <<< "$PODS_INFO"
 
 # Traceroute al Service
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "                      TRACEROUTE A SERVICE CLUSTERIP                           "
+echo "                      CONECTIVIDAD A SERVICE CLUSTERIP                         "
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "--- Traceroute a Service ClusterIP ($SERVICE_IP) ---"
-$OC exec -n "$NAMESPACE" debug-hops -- traceroute -n -m 10 -w 2 "$SERVICE_IP" 2>/dev/null || echo "traceroute falló"
+echo "--- Service ClusterIP ($SERVICE_IP) ---"
+echo "Ping test:"
+$OC exec -n "$NAMESPACE" debug-hops -- ping -c 3 -W 2 "$SERVICE_IP" 2>/dev/null || echo "ping a ClusterIP no soportado (normal en Kubernetes)"
+
+echo ""
+echo "HTTP check (múltiples requests para ver load balancing):"
+for i in 1 2 3 4 5; do
+    RESPONSE=$($OC exec -n "$NAMESPACE" debug-hops -- curl -s -o /dev/null -w "%{http_code} %{time_total}s" "http://${SERVICE_IP}:8080/" 2>/dev/null || echo "failed")
+    echo "  Request $i: $RESPONSE"
+done
 echo ""
 
 # Análisis específico de Cilium
@@ -106,19 +125,54 @@ if [ "$CNI_TYPE" == "Cilium" ]; then
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     
-    CILIUM_POD=$($OC get pods -n openshift-cilium -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}')
+    # Detectar namespace de Cilium (puede ser cilium, openshift-cilium, kube-system)
+    CILIUM_NS=""
+    for ns in cilium openshift-cilium kube-system; do
+        if $OC get pods -n "$ns" -l k8s-app=cilium -o name 2>/dev/null | grep -q pod; then
+            CILIUM_NS="$ns"
+            break
+        fi
+        # También probar con label app.kubernetes.io/name=cilium-agent
+        if $OC get pods -n "$ns" -l app.kubernetes.io/name=cilium-agent -o name 2>/dev/null | grep -q pod; then
+            CILIUM_NS="$ns"
+            break
+        fi
+    done
     
-    echo "--- Cilium BPF Policy ---"
-    $OC exec -n openshift-cilium "$CILIUM_POD" -- cilium bpf policy get 2>/dev/null | head -30 || echo "No disponible"
-    echo ""
-    
-    echo "--- Cilium Endpoint List ---"
-    $OC exec -n openshift-cilium "$CILIUM_POD" -- cilium endpoint list 2>/dev/null | head -20 || echo "No disponible"
-    echo ""
-    
-    echo "--- Cilium Service List ---"
-    $OC exec -n openshift-cilium "$CILIUM_POD" -- cilium service list 2>/dev/null | grep -E "perf-target|ClusterIP" | head -10 || echo "No disponible"
-    echo ""
+    if [ -z "$CILIUM_NS" ]; then
+        echo "No se encontró namespace de Cilium. Buscando pods..."
+        $OC get pods -A | grep -i cilium | head -10
+    else
+        log_info "Cilium namespace detectado: $CILIUM_NS"
+        
+        # Obtener pod de Cilium agent
+        CILIUM_POD=$($OC get pods -n "$CILIUM_NS" -l k8s-app=cilium -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
+                     $OC get pods -n "$CILIUM_NS" -l app.kubernetes.io/name=cilium-agent -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || \
+                     $OC get pods -n "$CILIUM_NS" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+        
+        if [ -n "$CILIUM_POD" ]; then
+            log_info "Usando pod: $CILIUM_POD"
+            echo ""
+            
+            echo "--- Cilium Status ---"
+            $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium status --brief 2>/dev/null || echo "No disponible"
+            echo ""
+            
+            echo "--- Cilium Endpoint List (pods en network-perf-test) ---"
+            $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium endpoint list 2>/dev/null | grep -E "ENDPOINT|perf-target|network-perf" | head -20 || echo "No disponible"
+            echo ""
+            
+            echo "--- Cilium Service List (perf-target) ---"
+            $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium service list 2>/dev/null | grep -E "ID|perf-target" | head -15 || echo "No disponible"
+            echo ""
+            
+            echo "--- Cilium BPF LB List (load balancer entries) ---"
+            $OC exec -n "$CILIUM_NS" "$CILIUM_POD" -- cilium bpf lb list 2>/dev/null | grep -E "SERVICE|$SERVICE_IP" | head -10 || echo "No disponible"
+            echo ""
+        else
+            echo "No se pudo encontrar pod de Cilium agent"
+        fi
+    fi
 fi
 
 # Análisis de OVN
