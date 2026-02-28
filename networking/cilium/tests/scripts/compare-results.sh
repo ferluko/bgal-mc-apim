@@ -55,15 +55,24 @@ echo ""
 
 # Función para extraer métrica de un log
 # Formato: │ Escenario                      │   Min   │   Avg   │   P95   │   P99   │   Max   │
-# Columnas:  1                                  2          3          4          5          6
+# Posiciones de valores (después de extraer números): 1=Min, 2=Avg, 3=P95, 4=P99, 5=Max
 extract_metric() {
     local file="$1"
     local scenario="$2"
-    local column="$3"  # 2=Min, 3=Avg, 4=P95, 5=P99, 6=Max
+    local position="$3"  # 1=Min, 2=Avg, 3=P95, 4=P99, 5=Max
     
-    local value=$(grep -E "│.*${scenario}.*│" "$file" 2>/dev/null | head -1 | awk -F'│' -v col="$column" '{gsub(/[^0-9.]/, "", $col); print $col}')
+    # Buscar la línea con el escenario y extraer todos los números con "ms"
+    local line=$(grep "${scenario}" "$file" 2>/dev/null | grep -E "[0-9]+\.[0-9]+ms" | head -1)
     
-    if [ -z "$value" ] || [ "$value" == "0.00" ]; then
+    if [ -z "$line" ]; then
+        echo "N/A"
+        return
+    fi
+    
+    # Extraer todos los valores numéricos (formato X.XXms)
+    local value=$(echo "$line" | grep -oE "[0-9]+\.[0-9]+" | sed -n "${position}p")
+    
+    if [ -z "$value" ]; then
         echo "N/A"
     else
         echo "$value"
@@ -146,8 +155,9 @@ scenarios=(
 )
 
 for scenario in "${scenarios[@]}"; do
-    cilium_p95=$(extract_metric "$CILIUM_LOG" "$scenario" 4)
-    ovn_p95=$(extract_metric "$OVN_LOG" "$scenario" 4)
+    # P95 está en posición 3 (Min=1, Avg=2, P95=3, P99=4, Max=5)
+    cilium_p95=$(extract_metric "$CILIUM_LOG" "$scenario" 3)
+    ovn_p95=$(extract_metric "$OVN_LOG" "$scenario" 3)
     diff=$(calc_diff "$cilium_p95" "$ovn_p95")
     diff_colored=$(color_diff "$diff")
     winner=$(show_winner "$diff")
@@ -164,8 +174,9 @@ printf "${BOLD}%-32s %10s %10s %12s %10s${NC}\n" "Escenario" "Cilium" "OVN" "Dif
 printf "%-32s %10s %10s %12s %10s\n" "--------------------------------" "----------" "----------" "------------" "----------"
 
 for scenario in "${scenarios[@]}"; do
-    cilium_avg=$(extract_metric "$CILIUM_LOG" "$scenario" 3)
-    ovn_avg=$(extract_metric "$OVN_LOG" "$scenario" 3)
+    # Avg está en posición 2
+    cilium_avg=$(extract_metric "$CILIUM_LOG" "$scenario" 2)
+    ovn_avg=$(extract_metric "$OVN_LOG" "$scenario" 2)
     diff=$(calc_diff "$cilium_avg" "$ovn_avg")
     diff_colored=$(color_diff "$diff")
     winner=$(show_winner "$diff")
@@ -219,8 +230,9 @@ ovn_wins=0
 ties=0
 
 for scenario in "${scenarios[@]}"; do
-    cilium_p95=$(extract_metric "$CILIUM_LOG" "$scenario" 4)
-    ovn_p95=$(extract_metric "$OVN_LOG" "$scenario" 4)
+    # P95 está en posición 3
+    cilium_p95=$(extract_metric "$CILIUM_LOG" "$scenario" 3)
+    ovn_p95=$(extract_metric "$OVN_LOG" "$scenario" 3)
     diff=$(calc_diff "$cilium_p95" "$ovn_p95")
     
     if [[ "$diff" != "N/A" ]]; then
