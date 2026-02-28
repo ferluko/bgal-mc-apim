@@ -223,7 +223,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Gi
+      storage: 5Gi
 EOF
     
     # Crear Job de k6
