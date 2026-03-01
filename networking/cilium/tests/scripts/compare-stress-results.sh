@@ -19,11 +19,19 @@ NC='\033[0m'
 CILIUM_DIR="$1"
 OVN_DIR="$2"
 
-CILIUM_LOG=$(ls -t "$CILIUM_DIR"/*.log 2>/dev/null | head -1)
-OVN_LOG=$(ls -t "$OVN_DIR"/*.log 2>/dev/null | head -1)
+# Buscar stress-output.log: en el dir o en subdirs stress-results-*
+find_log() {
+    local dir="$1"
+    local log
+    log=$(ls -t "$dir"/stress-output.log "$dir"/*/stress-output.log 2>/dev/null | head -1)
+    [ -n "$log" ] && echo "$log"
+}
 
-[ -n "$CILIUM_LOG" ] || { echo "No hay logs en $CILIUM_DIR"; exit 1; }
-[ -n "$OVN_LOG" ] || { echo "No hay logs en $OVN_DIR"; exit 1; }
+CILIUM_LOG=$(find_log "$CILIUM_DIR")
+OVN_LOG=$(find_log "$OVN_DIR")
+
+[ -n "$CILIUM_LOG" ] || { echo "No se encontró stress-output.log en $CILIUM_DIR"; exit 1; }
+[ -n "$OVN_LOG" ] || { echo "No se encontró stress-output.log en $OVN_DIR"; exit 1; }
 
 extract_stress_metric() {
     local file="$1"
