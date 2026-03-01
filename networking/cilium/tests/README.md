@@ -10,6 +10,7 @@ Suite de pruebas para comparar latencia, throughput y número de saltos (hops) e
 tests/
 ├── k6/                          # Scripts de Grafana k6
 │   ├── latency-test.js          # Pruebas de latencia por escenario
+│   ├── stress-test.js           # Stress test: mayor carga, corto
 │   └── connection-test.js       # Pruebas de establecimiento de conexión
 ├── manifests/                   # Manifiestos de Kubernetes
 │   ├── target-deployment.yaml   # Pods y Services target
@@ -17,8 +18,10 @@ tests/
 │   ├── netperf.yaml             # Servidor/cliente netperf
 │   └── k6-job.yaml              # Job de k6 en Kubernetes
 ├── scripts/                     # Scripts de ejecución
-│   ├── run-tests.sh             # Script principal de pruebas
+│   ├── run-tests.sh             # Script principal (k6 en cluster)
+│   ├── run-stress-tests.sh      # Stress test local (mayor carga)
 │   ├── compare-results.sh       # Comparador de resultados
+│   ├── compare-stress-results.sh # Comparador stress test
 │   └── measure-hops.sh          # Análisis de saltos de red
 └── README.md
 ```
@@ -50,7 +53,22 @@ chmod +x *.sh
 ./compare-results.sh ./results-cilium ./results-ovn
 ```
 
-### 3. Analizar saltos de red
+### 3. Stress test (k6 local, mayor carga)
+
+Ejecuta k6 desde la máquina local con carga más alta (~3 min):
+
+```bash
+# Requiere k6 instalado localmente
+./run-stress-tests.sh -o ./stress-results-cilium
+
+# Con port-forward si NodePort no es reachable
+./run-stress-tests.sh -p -o ./stress-results-cilium
+
+# Comparar stress results
+./compare-stress-results.sh ./stress-results-cilium ./stress-results-ovn
+```
+
+### 4. Analizar saltos de red
 
 ```bash
 ./measure-hops.sh
@@ -58,7 +76,16 @@ chmod +x *.sh
 
 ## Escenarios de Prueba
 
-### Latencia (k6)
+### Stress Test (k6 local)
+
+| Escenario | VUs | Duración |
+|-----------|-----|----------|
+| Ramp | 0 → 150 | 45s |
+| Constante | 300 | 30s |
+| Burst | 500 | 20s |
+| Spike | 0 → 400 → 0 | 40s |
+
+### Latencia estándar (k6)
 
 | Escenario | Descripción | Duración |
 |-----------|-------------|----------|
