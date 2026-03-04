@@ -20,14 +20,8 @@ El alcance principal del material es multicluster. El frente APIM se incluye com
 
 ## Ruta de lectura recomendada
 
-1. Documento ejecutivo consolidado:
-   - `00_resumen_ejecutivo_openshift_multicluster.md`
-2. Estructura completa por dominios:
-   - `02_multi-cluster/indice_tentativo.md`
-3. Vision estrategica complementaria:
-   - `02_multi-cluster/vision_estrategia_multicluster.md`
-4. Detalle tecnico por tema (arquitectura, seguridad, observabilidad, operacion, roadmap):
-   - `02_multi-cluster/`
+- `propuesta-implementacion-ocp-multicluster.md` — Documento de propuesta (estrategia, topología, fases y plan de ejecución).
+- `propuesta-implementacion-ocp-imagenes/` — Diagramas y figuras referenciadas en el documento anterior.
 
 ## Estructura principal
 
@@ -66,6 +60,24 @@ El alcance principal del material es multicluster. El frente APIM se incluye com
 - Para profundizar, usar los links numerados `[n]` hacia documentos detallados.
 - Mantener trazabilidad: cuando se agregue contenido nuevo al resumen, actualizar sus referencias.
 - Evitar duplicacion de contenido: consolidar en documentos fuente y referenciar desde el resumen.
+
+## Cómo colaborar (sin clone, push ni merge request)
+
+Podés sumar correcciones, ideas o mejoras sin clonar el repo ni abrir un MR desde tu máquina:
+
+1. **Sugerir un cambio concreto** *(recomendado)*  
+   Seleccioná el texto que quieras cambiar y usá *Suggest change* en el comentario de un PR o en la vista de comparación. El mantenedor puede aplicar la sugerencia en un solo clic. Es la forma más sencilla de proponer correcciones sin tocar el repo.
+
+2. **Editar en la web**  
+   En GitHub: abrí el archivo, hacé clic en el ícono del lápiz (*Edit this file*). Editás, guardás y elegís *Commit directly* (si tenés permisos) o *Propose changes*: se crea un branch y un Pull Request automático desde el navegador.
+
+3. **Abrir un Issue**  
+   Si preferís no tocar el contenido: creá un Issue describiendo la corrección, la idea o el tema que falta. Podés pegar el párrafo sugerido en el cuerpo del Issue para que alguien lo incorpore.
+
+4. **Comentar en un PR o Issue existente**  
+   Cualquier comentario con feedback, preguntas o propuestas de texto cuenta como colaboración y se puede integrar después.
+
+Para flujo clásico (clone, branch, push, MR) usá el mismo repositorio; estas opciones son para participar con el mínimo de pasos.
 
 ## Estado del documento
 
