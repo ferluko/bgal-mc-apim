@@ -92,8 +92,9 @@ El banco opera hoy con **un cluster OpenShift monolítico** que concentra la may
 
 ### 2.1 Dirección general
 
-- **Transición de 1 cluster monolítico a ~30 clusters menores**, con **7–8 clusters productivos** (PGA) [[139]](https://notes.granola.ai/d/091b9304-4fb3-4f7b-9812-203ea2aa71e1) [[66]](https://notes.granola.ai/d/66f09501-a42b-430a-a5f4-e4e2fa4a8240).
-- **Clusters por propósito:** ACM dedicado (solo orquestación), cluster(s) de **servicios centralizados** (ODF, observabilidad, Vault, DevOps/APIs), **clusters aplicativos** por línea de negocio/tribu, y clusters **especializados** (p. ej. BFFA con GPU) [[145]](https://notes.granola.ai/d/76fb3204-fe56-4f72-80ef-7d2c29b805ec).
+- **Transición de 1 cluster monolítico a una flota de clusters menores.** Referencia consolidada: **21 clusters** en total (15 en producción, 6 en no producción), con tipología detallada por dominio (gobierno, APIM prd/dr, workload PROD/DR, QA, servicios compartidos, laboratorio, DEV, STG). Alternativa discutida en fases previas: ~30 clusters con 7–8 productivos; ver 7.1 Modelo multicluster objetivo y segmentación de dominios.
+- **Ejecución en dos pasos (steps):** Step 1 (H1): habilitadores, ingress sharding, IaaS dedicado por sitio, dominios de clusters; Step 2 (H2): patrones de tráfico north-south/east-west, segmentación operativa, movimiento de cargas y consolidación de HA. Detalle en 13.1 Fases de implementación y 13.5 Hitos y entregables.
+- **Clusters por propósito:** ACM dedicado (gobierno), clusters de **servicios centralizados** (observabilidad, storage as a service, secretos, CI/CD), **clusters aplicativos** por tribu/dominio, y clusters **especializados** (APIM, laboratorio, p. ej. BFFA con GPU).
 - **Sin big bang:** migración **servicio por servicio**, con **período de convivencia** entre plataforma actual y nueva [[91]](https://notes.granola.ai/d/aec43520-a806-40f3-b6b1-fd7508ac987d).
 
 ### 2.2 Pilares técnicos

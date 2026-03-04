@@ -151,7 +151,7 @@ La permanencia del modelo actual de OpenShift monolítico activo-pasivo no es ne
 
 **IMPACTO:** pérdida de competitividad y menor capacidad de respuesta ante nuevas demandas del negocio.
 
-La materialización de estos riesgos se mitiga con el programa descrito en secciones 5 a 7; los riesgos específicos del programa de migración se recogen en [sección 8](#sec-8).
+La materialización de estos riesgos se mitiga con el programa descrito en secciones 5 a 7; los riesgos específicos del programa de migración se detallan en [sección 8](#sec-8).
 
 ---
 

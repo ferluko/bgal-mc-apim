@@ -29,6 +29,7 @@
   - 3.7 Observabilidad y monitoreo actual
   - 3.8 Costos operativos y de licenciamiento actuales
 - 4\. Diagnostico de problemas estructurales y deuda tecnica
+  - 4.0 Sintesis: limitaciones tecnicas prioritarias (cuatro pilares)
   - 4.1 Riesgo sistemico y blast radius
   - 4.2 Limites de escalabilidad y elasticidad
   - 4.3 Complejidad operativa y tareas manuales
@@ -102,6 +103,7 @@
   - 13.4 Plan de transicion de APIs y workloads
   - 13.5 Hitos, entregables y criterios de avance
 - 14\. Riesgos, mitigaciones y plan de contingencia
+  - 14.0 Riesgos criticos del programa multicluster — Registro consolidado
   - 14.1 Riesgos tecnicos de arquitectura y migracion
   - 14.2 Riesgos operativos y de continuidad del negocio
   - 14.3 Riesgos de seguridad y cumplimiento
