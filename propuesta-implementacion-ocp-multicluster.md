@@ -162,7 +162,7 @@ La materialización de estos riesgos se mitiga con el programa descrito en secci
 
 [🔗 Ver Miro Dashboard de Topología As-Is](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662371332578&cot=14)
 
-![Topología as-is — Vista general (DMZ, PAAS, VMware, IBM Storage)](propuesta-implementacion-ocp-imagenes/diagrama-as-is.png)
+![Topología as-is — Vista general (DMZ, PAAS, VMware, IBM Storage)](propuesta-implementacion-ocp-imagenes/diagrama-as-is.jpeg)
 
 *Figura 1 — Vista general de la topología as-is: capas de acceso externo, DMZ, PAAS (PGA/CMZ), virtualización y almacenamiento.*
 
@@ -223,7 +223,7 @@ La plataforma opera con una topología stretched entre Plaza Galicia y Casa Matr
 
 [🔗 Ver Miro Dashboard de As-Is Production](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662372442082&cot=14)
 
-![Arquitectura as-is producción — Orquestación, workload y sincronización](propuesta-implementacion-ocp-imagenes/diagrama-as-is-production.png)
+![Arquitectura as-is producción — Orquestación, workload y sincronización](propuesta-implementacion-ocp-imagenes/diagrama-as-is-production.jpeg)
 
 *Figura 2 — Arquitectura as-is de producción: clusters de orquestación (paas-acm), workload (paas-prdpg activo / paas-prdmz pasivo), tráfico y sincronización.*
 
@@ -273,7 +273,7 @@ A continuación se presenta la topología objetivo de la flota OpenShift, distri
 
 [🔗 Ver Miro Dashboard de To-Be Clusters](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662373131260&cot=14)
 
-![Topología objetivo multicluster — Entornos de producción y no producción (Plaza Galicia / Casa Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-clusters.png)
+![Topología objetivo multicluster — Entornos de producción y no producción (Plaza Galicia / Casa Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-clusters.jpeg)
 
 *Figura 4 — Arquitectura objetivo de clusters OpenShift: distribución en entornos de producción (Governance, APIM, Workload PROD/DR, QA, Shared Services) y no producción (Laboratory, Shared Services, DEV, STG) entre Plaza Galicia y Casa Matriz.*
 
@@ -300,7 +300,9 @@ La distribución objetivo de clusters ( [Figura 4](#sec-3) ) se organiza por ent
 
 Los patrones de tráfico objetivo distinguen de forma explícita el **ingreso y la exposición de APIs** (north-south) de la **comunicación entre servicios internos** (east-west). Esta separación permite asignar responsabilidades por capa —perímetro, gobierno de APIs, malla de servicios— y alinear la arquitectura con la modernización APIM y la evolución de la capa de servicios. 
 
-![APIM y Workload Clusters — Tráfico north-south y east-west](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step2.png)
+[🔗 Ver Miro Dashboard de To-Be Production - Step 2](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662373131260&cot=14)
+
+![APIM y Workload Clusters — Tráfico north-south y east-west](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step2.jpeg)
 
 *Figura 5 — Patrones de tráfico: APIM Clusters (prd/dr) y Workload Clusters con F5 GTM externo/interno y red East-West (Step 2).*
 
@@ -442,6 +444,8 @@ El detalle temporal se refleja en el plan de ejecución ([sección 7](#sec-7)).
 En esta sección se detalla la **arquitectura y topología objetivo** para la **primera etapa (H1)** del programa. En ella se arman las **fundacionales**, se definen los **habilitadores**, se establece la **automatización day 0 / day 1 / day 2**, se **consolida el ingress sharding**, se arma el **IaaS dedicado por sitio**, se **aplica el nuevo modelo de tráfico** con F5 GTM, se **arman los dominios de clusters** con separación clara de responsabilidades y se **despliega la observabilidad e2e mediante eBPF**. Corresponde a las fases 5.1 y 5.2 ([sección 5](#sec-5)); el Step 2 (H2) amplía esta base con patrones de tráfico APIM/workload, segmentación operativa y consolidación de HA ([sección 3.2](#sec-3), [sección 5.3](#sec-5)–5.5).
 
 ### 6.1 Vista general — Step 1 (H1) [34](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.1_modelo_multicluster_objetivo_y_segmentacion_de_dominios.md)
+
+[🔗 Ver Miro Dashboard de As-Is Production - Step 1](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662448484972&cot=14)
 
 ![Propuesta target — PAAS e IaaS por sitio (Plaza / Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step1.png)
 
