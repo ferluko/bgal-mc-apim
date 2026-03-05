@@ -447,7 +447,7 @@ En esta sección se detalla la **arquitectura y topología objetivo** para la **
 
 [🔗 Ver Miro Dashboard de As-Is Production - Step 1](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662448484972&cot=14)
 
-![Propuesta target — PAAS e IaaS por sitio (Plaza / Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step1.png)
+![Propuesta target — PAAS e IaaS por sitio (Plaza / Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step1.jpeg)
 
 *Figura 6 — Propuesta de implementación OCP multicluster (Step 1 / H1): capas PAAS (orquestación, workload prd/dr, servicios compartidos y storage) e IaaS (vSphere por sitio, almacenamiento dedicado).*
 
