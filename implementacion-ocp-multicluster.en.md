@@ -49,7 +49,8 @@
    - 5.2 Ingress sharding and flow decoupling phase
    - 5.3 Operational segmentation and governance phase
    - 5.4 Workload movement process consolidation and maturity phase
-   - 5.5 High-availability pattern consolidation phase
+   - 5.5 Implementation and migration to the new APIM
+   - 5.6 High-availability pattern consolidation phase
 
 6. [**Target architecture and topology -- First stage (H1)**](#sec-6)
    - 6.1 Overview -- Step 1 (H1)
@@ -162,7 +163,7 @@ The materialization of these risks is mitigated by the program described in sect
 
 [🔗 View As-Is Topology Miro Dashboard](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662371332578&cot=14)
 
-![As-is topology -- General view (DMZ, PAAS, VMware, IBM Storage)](propuesta-implementacion-ocp-imagenes/diagrama-as-is.jpeg)
+![As-is topology -- General view (DMZ, PAAS, VMware, IBM Storage)](implementacion-ocp-imagenes/diagrama-as-is.jpeg)
 
 *Figure 1 -- As-is topology overview: external access layers, DMZ, PAAS (PGA/CMZ), virtualization, and storage.*
 
@@ -223,7 +224,7 @@ The platform operates with a stretched topology between Plaza Galicia and Casa M
 
 [🔗 View As-Is Production Miro Dashboard](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662372442082&cot=14)
 
-![As-is production architecture -- Orchestration, workload, and synchronization](propuesta-implementacion-ocp-imagenes/diagrama-as-is-production.jpeg)
+![As-is production architecture -- Orchestration, workload, and synchronization](implementacion-ocp-imagenes/diagrama-as-is-production.jpeg)
 
 *Figure 2 -- As-is production architecture: orchestration clusters (paas-acm), workload (active paas-prdpg / passive paas-prdmz), traffic, and synchronization.*
 
@@ -242,7 +243,7 @@ Manual failover between sites: switch Traffic Enabled/Disabled in F5 LTM and DNS
 
 Limitations are grouped into four pillars: **operating model**, **scalability**, **blast radius**, and **life cycle** (Figure 3). They are illustrated and detailed below.
 
-![Technical limitation pillars -- Operating model, Scalability, Blast radius, Life cycle](propuesta-implementacion-ocp-imagenes/diagrama-pilares-modelo-operativo-escalabilidad-blast-lifecycle.png)
+![Technical limitation pillars -- Operating model, Scalability, Blast radius, Life cycle](implementacion-ocp-imagenes/diagrama-pilares-modelo-operativo-escalabilidad-blast-lifecycle.png)
 
 *Figure 3 -- Four pillars of priority technical limitations: operating model, scalability, blast radius, and life cycle.*
 
@@ -273,7 +274,7 @@ Below is the target topology of the OpenShift fleet, distributed across Plaza Ga
 
 [🔗 View To-Be Clusters Miro Dashboard](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662373131260&cot=14)
 
-![Target multicluster topology -- Production and non-production environments (Plaza Galicia / Casa Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-clusters.jpeg)
+![Target multicluster topology -- Production and non-production environments (Plaza Galicia / Casa Matriz)](implementacion-ocp-imagenes/diagrama-to-be-clusters.jpeg)
 
 *Figure 4 -- Target OpenShift cluster architecture: distribution across production environments (Governance, APIM, Workload PROD/DR, QA, Shared Services) and non-production environments (Laboratory, Shared Services, DEV, STG) between Plaza Galicia and Casa Matriz.*
 
@@ -302,7 +303,7 @@ Target traffic patterns explicitly distinguish **API ingress and exposure** (nor
 
 [🔗 View To-Be Production - Step 2 Miro Dashboard](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662373131260&cot=14)
 
-![APIM and Workload Clusters -- North-south and east-west traffic](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step2.jpeg)
+![APIM and Workload Clusters -- North-south and east-west traffic](implementacion-ocp-imagenes/diagrama-to-be-prod-step2.jpeg)
 
 *Figure 5 -- Traffic patterns: APIM Clusters (prd/dr) and Workload Clusters with external/internal F5 GTM and East-West network (Step 2).*
 
@@ -390,8 +391,8 @@ The table summarizes the most relevant architectural decisions of the program; f
 
 The evolution is executed in **two major steps**:
 
-- **Step 1** (first half of the year) -- platform enablers, ingress sharding consolidation, and operational segmentation with governance (phases 5.1 to 5.3).
-- **Step 2** (second half of the year) -- consolidation and maturity of the workload movement process, high-availability patterns (phases 5.4 and 5.5), and traffic flow.
+- **Step 1** (first half of the year) -- platform enablers, ingress sharding consolidation, operational segmentation with governance, and consolidation/maturity of the workload movement process (phases 5.1 to 5.4).
+- **Step 2** (second half of the year) -- implementation and migration to the new APIM, high-availability pattern consolidation (phases 5.5 and 5.6), and traffic flow.
 
 Timing detail is reflected in the execution plan ([section 7](#sec-7)).
 
@@ -414,13 +415,15 @@ Timing detail is reflected in the execution plan ([section 7](#sec-7)).
 ### 5.3 Operational segmentation and governance phase [31](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/06_alternativas_tecnologicas_evaluadas/6.7_alternativas_de_operacion_multicluster_y_gobierno_de_flota.md), [40](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.7_modelo_operativo_gitops_iac.md), [14](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/04_diagnostico_problemas_deuda_tecnica/4.4_brechas_de_resiliencia_y_recuperacion_ante_desastres.md)
 
 - Move from exception-based centralized operation to domain-based operation with guardrails.
+- Build shared services clusters and bring their operators into operation (observability, secrets, transversal components, CI/CD, consoles).
+- Delegate and migrate observability to shared services clusters; consolidate federated telemetry (metrics, logs, traces) per site.
 - Activate centralized multicluster control plane with distributed data planes for API Gateway L7.
 - Standardize APIM/API Gateway as a multitenant north-south capability by domain.
 - Automate RBAC and global policies with continuous reconciliation.
 - Execute staged upgrades (control plane/core first, then compute pools); run risk tests for network/CNI migrations.
 - Strengthen continuity by refining DRP invocation process, runbooks, and no-go-live criteria.
 - Identify HA-ready applications and domains as the first migration wave.
-- Define the first workload wave and migration sequence for execution in H2.
+- Define the first workload wave and migration sequence for execution in H1.
 
 ### 5.4 Workload movement process consolidation and maturity phase [44](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/08_estrategia_portabilidad_evolucion_nube/8.3_enfoque_de_migracion_progresiva_con_minimo_refactor.md), [43](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/08_estrategia_portabilidad_evolucion_nube/8.2_criterios_de_elegibilidad_y_priorizacion_de_workloads.md), [51](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/09_modelo_operativo_experiencia_desarrollo/9.4_practicas_de_entrega_segura_cicd_controles_gobernanza.md)
 
@@ -431,7 +434,15 @@ Timing detail is reflected in the execution plan ([section 7](#sec-7)).
 - Perform progressive traffic switchover per wave with controlled rollback and prior technical validations.
 - Measure post-movement stability (errors, latency, availability) and adjust the process for subsequent waves.
 
-### 5.5 High-availability pattern consolidation phase [41](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.8_patrones_de_resiliencia_failover_y_continuidad_de_servicio.md), [14](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/04_diagnostico_problemas_deuda_tecnica/4.4_brechas_de_resiliencia_y_recuperacion_ante_desastres.md)
+### 5.5 Implementation and migration to the new APIM [26](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/06_alternativas_tecnologicas_evaluadas/6.2_alternativas_de_api_management_y_api_gateway.md), [35](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.2_patron_norte_sur_ingreso_exposicion_y_gobierno_de_apis.md), [44](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/08_estrategia_portabilidad_evolucion_nube/8.3_enfoque_de_migracion_progresiva_con_minimo_refactor.md)
+
+- Implement the target APIM/API Gateway platform resulting from the technical evaluation, with controlled coexistence with 3scale during transition.
+- Deploy the target APIM domain topology (DMZ->APIM->mesh), clearly separating governance, execution, and exposure planes.
+- Migrate APIs, products, consumers, and policies in waves, with explicit go/no-go criteria, regression testing, and rollback by domain.
+- Progressively reroute north-south traffic to the new APIM through GTM/LTM, DNS, and staged functional/performance validation.
+- Complete operational transition (runbooks, observability, support) and execute planned 3scale decommissioning before EOL.
+
+### 5.6 High-availability pattern consolidation phase [41](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.8_patrones_de_resiliencia_failover_y_continuidad_de_servicio.md), [14](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/04_diagnostico_problemas_deuda_tecnica/4.4_brechas_de_resiliencia_y_recuperacion_ante_desastres.md)
 
 - Stabilize multicluster operation with verifiable recovery capability.
 - Adopt active-active or active-passive models based on service criticality and nature.
@@ -444,13 +455,13 @@ Timing detail is reflected in the execution plan ([section 7](#sec-7)).
 <a id="sec-6"></a>
 ## 6. Target architecture and topology -- First stage (H1)
 
-This section details the **target architecture and topology** for the **first stage (H1)** of the program. It establishes the **foundations**, defines **enablers**, sets up **day 0 / day 1 / day 2 automation**, **consolidates ingress sharding**, builds **dedicated IaaS per site**, **applies the new traffic model** with F5 GTM, establishes **cluster domains** with clear separation of responsibilities, and **deploys end-to-end observability through eBPF**. It corresponds to phases 5.1 to 5.3 ([section 5](#sec-5)); Step 2 (H2) extends this base with APIM/workload traffic patterns, consolidation and maturity of the workload movement process, and HA consolidation ([section 3.2](#sec-3), [section 5.4](#sec-5)-5.5).
+This section details the **target architecture and topology** for the **first stage (H1)** of the program. It establishes the **foundations**, defines **enablers**, sets up **day 0 / day 1 / day 2 automation**, **consolidates ingress sharding**, builds **dedicated IaaS per site**, **applies the new traffic model** with F5 GTM, establishes **cluster domains** with clear separation of responsibilities, and **deploys end-to-end observability through eBPF**. It corresponds to phases 5.1 to 5.4 ([section 5](#sec-5)); Step 2 (H2) extends this base with APIM/workload traffic patterns, implementation and migration to the new APIM, and HA consolidation ([section 3.2](#sec-3), [section 5.5](#sec-5)-5.6).
 
 ### 6.1 Overview -- Step 1 (H1) [34](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.1_modelo_multicluster_objetivo_y_segmentacion_de_dominios.md)
 
 [🔗 View As-Is Production - Step 1 Miro Dashboard](https://miro.com/app/board/uXjVG38NsdE=/?moveToWidget=3458764662448484972&cot=14)
 
-![Target proposal -- PAAS and IaaS by site (Plaza / Matriz)](propuesta-implementacion-ocp-imagenes/diagrama-to-be-prod-step1.jpeg)
+![Target proposal -- PAAS and IaaS by site (Plaza / Matriz)](implementacion-ocp-imagenes/diagrama-to-be-prod-step1.jpeg)
 
 *Figure 6 -- OCP multicluster implementation proposal (Step 1 / H1): PAAS layers (orchestration, workload prd/dr, shared services and storage) and IaaS layers (site-based vSphere, dedicated storage).*
 
@@ -473,7 +484,7 @@ High-level representation of the H1 fleet: governance, initial workload, shared 
 
 - **Compute:** Two **independent** vSphere clusters (Plaza Galicia and Casa Matriz), **not stretched**. Site isolation; each site operates its own host pool and management.
 - **Storage:** **Dedicated storage per site**, without synchronous IaaS-level replication between sites. Consumption through CSI and dedicated datastores per vSphere cluster; progressive elimination of dependency on stretched shared storage.
-- **Transition:** Migration from the current model (stretch, synchronous replication) is executed in phases: H1 consolidates enablers, ingress sharding, and operational governance (phases 5.1-5.3); physical site decoupling and dedicated per-site storage are strengthened in H2 with execution and maturity of the workload movement process (phase 5.4 / Step 2), prioritizing domains with lower dependency on synchronous replication.
+- **Transition:** Migration from the current model (stretch, synchronous replication) is executed in phases: H1 consolidates enablers, ingress sharding, operational governance, and workload movement process maturity (phases 5.1-5.4); H2 completes APIM domain migration and HA consolidation (phases 5.5 and 5.6 / Step 2), prioritizing domains with lower dependency on synchronous replication.
 
 ### 6.5 New traffic model with F5 GTM [37](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.4_arquitectura_de_ingress_egress_y_dns_global.md)
 
@@ -501,7 +512,7 @@ In H1, **cluster domains are established** with **clear separation of responsibi
 
 **Business clusters** (workload clusters) for application workloads are distributed by **tribe/domain**, using each domain's **resource usage** (vCPU, RAM, number of APIs) as reference. **Today applications are published in each ingress shard this way**; the placement strategy keeps that distribution as a baseline. This is a **first segmentation**; in the future, grouping may change based on growth of projects within each tribe/domain. The strategy will evolve with support from **end-to-end visibility (e2e) via eBPF** ([section 6.9](#sec-6-9)), enabling finer placement and prioritization according to observed traffic and behavior.
 
-![Groups by tribe/domain -- Application workload distribution (workload clusters)](propuesta-implementacion-ocp-imagenes/diagrama-grupos-tribus-dominio.png)
+![Groups by tribe/domain -- Application workload distribution (workload clusters)](implementacion-ocp-imagenes/diagrama-grupos-tribus-dominio.png)
 
 *Figure 7 -- Tribe/domain grouping for workload placement in business clusters; it corresponds to how applications are currently published in each ingress shard.*
 
@@ -516,11 +527,11 @@ Initially, workloads are placed according to the six groups in Figure 7; details
 |**Group 5** | Architecture; Development; DevSecOps; Commercial Management; Undetermined; QA; Stand Alone; Technology; Comex Tribe; Data & Analytics Tribe; Loyalty Tribe; Segments Tribe |
 | **Group 6** | Core Investments; Commerce Tribe; Lending Tribe |
 
-Workload assignment to clusters and wave-based prioritization are governed by the eligibility and go/no-go criteria defined in the program ([section 4](#sec-4), decisions table; [section 5.4](#sec-5)).
+Workload assignment to clusters and wave-based prioritization are governed by the eligibility and go/no-go criteria defined in the program ([section 4](#sec-4), decisions table; [section 5.4](#sec-5) and [section 5.5](#sec-5)).
 
 ### 6.8 High-availability and internal traffic scheme in H1 [41](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.8_patrones_de_resiliencia_failover_y_continuidad_de_servicio.md), [14](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/04_diagnostico_problemas_deuda_tecnica/4.4_brechas_de_resiliencia_y_recuperacion_ante_desastres.md)
 
-- **HA scheme in H1:** In the first stage, high availability **remains active-passive** (active site / standby site), consistent with the current model and with the objective of not increasing risk while building foundations and enablers. In parallel, **the basis for improved schemes is built** (active-active, automatic failover, global DNS, and multi-layer health checks), to be consolidated in H2 with phases 5.4 and 5.5 ([section 5](#sec-5)).
+- **HA scheme in H1:** In the first stage, high availability **remains active-passive** (active site / standby site), consistent with the current model and with the objective of not increasing risk while building foundations and enablers. In parallel, **the basis for improved schemes is built** (active-active, automatic failover, global DNS, and multi-layer health checks), to be consolidated in H2 with phases 5.5 and 5.6 ([section 5](#sec-5)).
 - **Intra-namespace and service-to-service consumption:** In H1, **consumption remains exactly as it is today**: **north-south traffic with hair-pinning** (exit through load balancer and re-entry into the cluster) for service-to-service or intra-namespace communication. The change to direct east-west mesh is not introduced in this stage; evolution toward pod-to-pod communication without hair-pinning is prepared by observability, security, and routing governance foundations, and will be addressed in H2 with the APIM program and service mesh ([section 3.2](#sec-3)).
 
 <a id="sec-6-9"></a>
@@ -535,12 +546,12 @@ Workload assignment to clusters and wave-based prioritization are governed by th
 <a id="sec-7"></a>
 ## 7. High-level execution plan [48](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/09_modelo_operativo_experiencia_desarrollo/9.1_operating_model_de_plataforma_roles_ownership_capacidades.md), [44](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/08_estrategia_portabilidad_evolucion_nube/8.3_enfoque_de_migracion_progresiva_con_minimo_refactor.md)
 
-The plan is structured in **two major steps**. Target dates are conditioned by banking freeze periods and change windows; no-go-live criteria are applied per phase. Deliverables for each step are detailed in [section 6](#sec-6) (H1, phases 5.1-5.3) and in [sections 3.2](#sec-3), [5.4](#sec-5)-5.5 (H2, with consolidation and maturity of the workload movement process).
+The plan is structured in **two major steps**. Target dates are conditioned by banking freeze periods and change windows; no-go-live criteria are applied per phase. Deliverables for each step are detailed in [section 6](#sec-6) (H1, phases 5.1-5.4) and in [sections 3.2](#sec-3), [5.5](#sec-5)-5.6 (H2, with implementation and migration to the new APIM and high-availability consolidation).
 
 | Step | Period | Target date (reference) | Scope and deliverable |
 |------|---------|----------------------------|---------------------|
-| **Step 1** | H1 2026 | Mar-Jun 2026 | PAAS/IaaS topology by site, enablers, ingress sharding, operational segmentation, and governance ([section 6.1](#sec-6), [section 5.1](#sec-5)-5.3). Closure of target architecture and execution governance definitions. Fundamentals and enablers; day 0 / day 1 / day 2 automation. Ingress sharding consolidation (F5 GTM/LTM, DNS). Dedicated IaaS per site (non-stretched vSphere, dedicated storage). New traffic model with F5 GTM. Cluster domains with separation of responsibilities. Active-passive HA scheme and foundations for improved schemes. End-to-end observability deployment with eBPF. Hardening/performance POC and validation of critical scenarios. |
-| **Step 2** | H2 2026 | Sep-Dec 2026 | North-south and east-west traffic patterns; APIM and workload clusters ([section 3.2](#sec-3)). Consolidation and maturity of the workload movement process; high-availability pattern consolidation ([section 5.4](#sec-5)-5.5). Progressive migration by waves; operational consolidation of the new topology. APIM domain transition closure before 3scale EOL. |
+| **Step 1** | H1 2026 | Mar-Jun 2026 | PAAS/IaaS topology by site, enablers, ingress sharding, operational segmentation, governance, and consolidation/maturity of the workload movement process ([section 6.1](#sec-6), [section 5.1](#sec-5)-5.4). Closure of target architecture and execution governance definitions. Fundamentals and enablers; day 0 / day 1 / day 2 automation. Ingress sharding consolidation (F5 GTM/LTM, DNS). Dedicated IaaS per site (non-stretched vSphere, dedicated storage). New traffic model with F5 GTM. Cluster domains with separation of responsibilities. Active-passive HA scheme and foundations for improved schemes. End-to-end observability deployment with eBPF. Hardening/performance POC and validation of critical scenarios. |
+| **Step 2** | H2 2026 | Jul-Dec 2026 | North-south and east-west traffic patterns; APIM and workload clusters ([section 3.2](#sec-3)). Implementation and migration to the new APIM; high-availability pattern consolidation ([section 5.5](#sec-5)-5.6). Progressive migration by waves; operational consolidation of the new topology. APIM domain transition closure before 3scale EOL. |
 
 ### 7.1 Executive control deliverables [48](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/09_modelo_operativo_experiencia_desarrollo/9.1_operating_model_de_plataforma_roles_ownership_capacidades.md), [52](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/09_modelo_operativo_experiencia_desarrollo/9.5_gestion_de_capacidad_slo_sla_y_operacion_continua.md), [63](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/11_observabilidad_integral_confiabilidad/11.5_indicadores_de_salud_tecnica_por_cluster_y_por_dominio.md)
 
@@ -583,7 +594,7 @@ The multicluster transformation is not a response to an isolated technology pref
 
 **APIM replacement** (3scale EOL mid-2027) is a relevant front within that transformation -- and a modeling case for network, security, and resilience decisions -- but **it is not the final objective**: the objective is the platform's end-to-end evolution toward multicluster, with defined north-south and east-west patterns, a target fleet of 21 clusters, and GitOps + IaC operation [26](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/06_alternativas_tecnologicas_evaluadas/6.2_alternativas_de_api_management_y_api_gateway.md). APIM technical detail and roadmap are documented in [01_apim](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/01_apim/00_indice.md) ([section 10.6](#sec-10)).
 
-Execution is structured in **two steps** (Step 1: H1 -- PAAS/IaaS topology, enablers, sharding, operational segmentation, and governance; Step 2: H2 -- traffic patterns, consolidation and maturity of the workload movement process, and HA consolidation), with phases detailed in [section 5](#sec-5), target topology in [section 6](#sec-6), plan and deliverables in [section 7](#sec-7), and critical risks with mitigations in [section 8](#sec-8). The expected result depends on **executing the sequence correctly**: (1) segment risk, (2) standardize operation, (3) migrate in phased waves with control and no-go-live criteria, (4) consolidate resilience based on evidence [44](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/08_estrategia_portabilidad_evolucion_nube/8.3_enfoque_de_migracion_progresiva_con_minimo_refactor.md), [41](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.8_patrones_de_resiliencia_failover_y_continuidad_de_servicio.md). With this execution, the platform evolves from a concentrated and reactive model to a **distributed, auditable architecture prepared for sustained growth**.
+Execution is structured in **two steps** (Step 1: H1 -- PAAS/IaaS topology, enablers, sharding, operational segmentation, governance, and workload movement consolidation/maturity; Step 2: H2 -- traffic patterns, implementation and migration to the new APIM, and HA consolidation), with phases detailed in [section 5](#sec-5), target topology in [section 6](#sec-6), plan and deliverables in [section 7](#sec-7), and critical risks with mitigations in [section 8](#sec-8). The expected result depends on **executing the sequence correctly**: (1) segment risk, (2) standardize operation, (3) migrate in phased waves with control and no-go-live criteria, (4) consolidate resilience based on evidence [44](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/08_estrategia_portabilidad_evolucion_nube/8.3_enfoque_de_migracion_progresiva_con_minimo_refactor.md), [41](https://github.bancogalicia.com.ar/ocpa/apim-doc/blob/master/02_multi-cluster/07_arquitectura_objetivo_plataforma/7.8_patrones_de_resiliencia_failover_y_continuidad_de_servicio.md). With this execution, the platform evolves from a concentrated and reactive model to a **distributed, auditable architecture prepared for sustained growth**.
 
 ---
 

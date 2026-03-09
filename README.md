@@ -24,7 +24,7 @@ El alcance principal del material es multicluster. El frente APIM se incluye com
 - `propuesta-implementacion-ocp-multicluster.en.md` — Version completa en ingles del documento principal.
 - `executive_briefs/propuesta-implementacion-ocp-multicluster.executive-summary.es.md` — Resumen ejecutivo actualizado en espanol.
 - `executive_briefs/propuesta-implementacion-ocp-multicluster.executive-summary.en.md` — Executive summary actualizado en ingles.
-- `propuesta-implementacion-ocp-imagenes/` — Diagramas y figuras referenciadas en los documentos principales.
+- `implementacion-ocp-imagenes/` — Diagramas y figuras referenciadas en los documentos principales.
 
 ## Estructura principal
 

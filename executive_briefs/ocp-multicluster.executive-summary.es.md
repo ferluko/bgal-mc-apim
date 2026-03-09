@@ -1,4 +1,4 @@
-# Propuesta de Implementación OCP Multicluster
+# Estrategia de Implementación OCP Multicluster
 
 ## Resumen Ejecutivo
 
@@ -128,30 +128,34 @@ Convierte la plataforma de un esquema reactivo y concentrado a un modelo distrib
 
 ## 6. Enfoque de Implementación
 
-El programa se ejecuta en **dos steps y cinco fases**, con adopción progresiva y mitigación de riesgo.
+El programa se ejecuta en **dos steps y seis fases**, con adopción progresiva y mitigación de riesgo.
 
 ### Step 1 (H1 2026): Fundaciones, habilitadores y gobierno operativo
 
 - Fase 5.1: base de gobierno, seguridad, observabilidad y estándar operativo
 - Fase 5.2: consolidación de ingress sharding, GTM/LTM y desacople inicial de flujos
-- Fase 5.3: segmentación operativa y gobierno multicluster, primer movimiento de cargas.
+- Fase 5.3: segmentación operativa y gobierno multicluster; clusters de servicios compartidos y puesta en marcha de operadores; delegación de observabilidad.
+- Fase 5.4: consolidación y madurez del proceso de movimiento de cargas por oleadas
 
 Entregables clave de H1:
 
 - Topología base PAAS/IaaS por sitio
 - Automatización day 0 / day 1 / day 2
 - Segmentación operativa y dominios de responsabilidad con gobierno activo
+- Clusters de servicios compartidos con operadores en marcha; observabilidad delegada y telemetría federada por sitio
+- Madurez del proceso de movimiento de cargas por oleadas
 - Observabilidad e2e con eBPF
 - Esquema HA activo-pasivo estabilizado con bases para evolución
 
-### Step 2 (H2 2026): Movimiento y consolidación operativa
+### Step 2 (H2 2026): APIM y consolidación operativa
 
-- Fase 5.4: consolidación y madurez del proceso de movimiento de cargas por oleadas
-- Fase 5.5: consolidación de patrones de alta disponibilidad y continuidad
+- Fase 5.5: implementación y migración al nuevo APIM
+- Fase 5.6: consolidación de patrones de alta disponibilidad y continuidad
 
 Entregables clave de H2:
 
-- Madurez del proceso de movimiento de cargas y de patrones north-south/east-west
+- Consolidación de patrones north-south/east-west
+- Implementación y migración controlada al nuevo APIM/API Gateway
 - Consolidación de la operación por dominios en la topología objetivo
 - Reducción progresiva del riesgo del monolito productivo
 - Avance del frente APIM antes del EOL de 3scale
@@ -185,6 +189,6 @@ Líneas de mitigación:
 
 La evolución a OCP multicluster es una decisión estratégica de continuidad y escalabilidad, no una mejora incremental de infraestructura.
 
-La propuesta alinea arquitectura, operación y gobierno para reducir riesgo sistémico, sostener el crecimiento del banco y mejorar la capacidad de respuesta tecnológica.
+Esta iniciativa alinea arquitectura, operación y gobierno para reducir riesgo sistémico, sostener el crecimiento del banco y mejorar la capacidad de respuesta tecnológica.
 
 El reemplazo de APIM es un frente importante dentro del programa, pero el resultado buscado es mayor: una plataforma distribuida, segura, auditable y preparada para crecimiento sostenido.

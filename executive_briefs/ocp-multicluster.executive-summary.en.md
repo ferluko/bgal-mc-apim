@@ -1,4 +1,4 @@
-# OCP Multicluster Implementation Proposal
+# OCP Multicluster Implementation Strategy
 
 ## Executive Summary
 
@@ -128,30 +128,34 @@ Transforms the platform from a reactive, concentrated setup into a distributed, 
 
 ## 6. Implementation Approach
 
-The program is executed in **two steps and five phases**, with progressive adoption and risk mitigation.
+The program is executed in **two steps and six phases**, with progressive adoption and risk mitigation.
 
 ### Step 1 (H1 2026): Foundations, enablers, and operational governance
 
 - Phase 5.1: governance, security, observability, and operating standard baseline
 - Phase 5.2: consolidation of ingress sharding, GTM/LTM, and initial flow decoupling
-- Phase 5.3: operational segmentation and multicluster governance, first workload movement
+- Phase 5.3: operational segmentation and multicluster governance; shared services clusters and operator rollout; observability delegation.
+- Phase 5.4: consolidation and maturity of the wave-based workload movement process
 
 Key H1 deliverables:
 
 - PAAS/IaaS base topology by site
 - day 0 / day 1 / day 2 automation
 - Operational segmentation and domains of responsibility with active governance
+- Shared services clusters with operators in place; delegated observability and federated telemetry per site
+- Maturity of the wave-based workload movement process
 - End-to-end observability with eBPF
 - Stabilized active-passive HA setup with foundations for evolution
 
-### Step 2 (H2 2026): Movement and operational consolidation
+### Step 2 (H2 2026): APIM and operational consolidation
 
-- Phase 5.4: consolidation and maturity of the wave-based workload movement process
-- Phase 5.5: consolidation of high-availability and continuity patterns
+- Phase 5.5: implementation and migration to the new APIM
+- Phase 5.6: consolidation of high-availability and continuity patterns
 
 Key H2 deliverables:
 
-- Maturity of the workload movement process and north-south/east-west patterns
+- Consolidation of north-south/east-west patterns
+- Controlled implementation and migration to the new APIM/API Gateway
 - Consolidation of domain-based operations in the target topology
 - Progressive reduction of production monolith risk
 - Progress of the APIM track before 3scale EOL
@@ -185,6 +189,6 @@ Mitigation lines:
 
 The evolution to OCP multicluster is a strategic decision for continuity and scalability, not an incremental infrastructure improvement.
 
-The proposal aligns architecture, operations, and governance to reduce systemic risk, sustain the bank's growth, and improve technology response capacity.
+This initiative aligns architecture, operations, and governance to reduce systemic risk, sustain the bank's growth, and improve technology response capacity.
 
 Replacing APIM is an important workstream within the program, but the intended outcome is broader: a distributed, secure, auditable platform prepared for sustained growth.
