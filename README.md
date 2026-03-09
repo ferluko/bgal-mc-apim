@@ -20,13 +20,19 @@ El alcance principal del material es multicluster. El frente APIM se incluye com
 
 ## Ruta de lectura recomendada
 
-- `propuesta-implementacion-ocp-multicluster.md` — Documento de propuesta (estrategia, topología, fases y plan de ejecución).
-- `propuesta-implementacion-ocp-imagenes/` — Diagramas y figuras referenciadas en el documento anterior.
+- `propuesta-implementacion-ocp-multicluster.md` — Documento principal en espanol (estrategia, topologia, fases y plan de ejecucion).
+- `propuesta-implementacion-ocp-multicluster.en.md` — Version completa en ingles del documento principal.
+- `executive_briefs/propuesta-implementacion-ocp-multicluster.executive-summary.es.md` — Resumen ejecutivo actualizado en espanol.
+- `executive_briefs/propuesta-implementacion-ocp-multicluster.executive-summary.en.md` — Executive summary actualizado en ingles.
+- `propuesta-implementacion-ocp-imagenes/` — Diagramas y figuras referenciadas en los documentos principales.
 
 ## Estructura principal
 
-- `00_resumen_ejecutivo_openshift_multicluster.md`
-  - Resumen ejecutivo consolidado con referencias numeradas.
+- `executive_briefs/`
+  - Resumenes ejecutivos vigentes (espanol e ingles) para consumo de negocio y liderazgo tecnico.
+
+- `executive_briefs/old/`
+  - Versiones historicas y material previo que ya no es fuente primaria.
 
 - `01_apim/`
   - Documentacion detallada del frente APIM (contexto, lecciones, decisiones, arquitectura, roadmap, riesgos y conclusiones).
@@ -51,14 +57,23 @@ El alcance principal del material es multicluster. El frente APIM se incluye com
 - `ebpf/`
   - Analisis y material de observabilidad eBPF.
 
+- `solution_briefs/`
+  - Entregables externos y assessments de terceros (por ejemplo, evaluaciones FlightPath).
+
 - `trash/`
   - Material historico, borradores y descartes (no usar como fuente primaria de publicacion).
 
+## Cambios incorporados hoy (2026-03-09)
+
+- Se incorporo `propuesta-implementacion-ocp-multicluster.en.md` como version en ingles del documento completo.
+- Se agrego `solution_briefs/` para alojar evaluaciones de terceros complementarias al marco de arquitectura.
+
 ## Convenciones de uso
 
-- Priorizar siempre `00_resumen_ejecutivo_openshift_multicluster.md` para lectura ejecutiva.
+- Priorizar `executive_briefs/propuesta-implementacion-ocp-multicluster.executive-summary.es.md` para lectura ejecutiva en espanol.
+- Usar `executive_briefs/propuesta-implementacion-ocp-multicluster.executive-summary.en.md` cuando se necesite version en ingles.
 - Para profundizar, usar los links numerados `[n]` hacia documentos detallados.
-- Mantener trazabilidad: cuando se agregue contenido nuevo al resumen, actualizar sus referencias.
+- Mantener trazabilidad: cuando se agregue contenido nuevo al resumen, actualizar referencias en ES/EN.
 - Evitar duplicacion de contenido: consolidar en documentos fuente y referenciar desde el resumen.
 
 ## Cómo colaborar (sin clone, push ni merge request)
