@@ -65,6 +65,8 @@ export PULL_SECRET_FILE="${PULL_SECRET_FILE:-${HOME}/.pull-secret.txt}"
 # --- Opciones ---
 export ENABLE_KPR="${ENABLE_KPR:-true}"
 export DRY_RUN="${DRY_RUN:-false}"
+# MachineConfigs que añaden api-int en /etc/hosts (master/worker). Default: false.
+export ADD_API_INT_HOSTS_MACHINECONFIGS="${ADD_API_INT_HOSTS_MACHINECONFIGS:-false}"
 
 # --- Mostrar configuración cargada ---
 echo "=== Configuración cargada ==="
