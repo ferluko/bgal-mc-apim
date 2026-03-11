@@ -211,7 +211,7 @@ Se generan dos MachineConfig:
 - `99-master-add-api-int-host` (rol master)
 - `99-worker-add-api-int-host` (rol worker)
 
-La línea añadida es: `API_VIP api-int.<cluster>.<baseDomain>` (por ejemplo `10.254.124.35 api-int.paas-srepg.bancogalicia.com.ar`). Usa `API_VIP` y el nombre del cluster de `clusters/<cluster>/env.sh`.
+La línea añadida es: `API_VIP api-int.<cluster>.<baseDomain>` (por ejemplo `10.254.124.35 api-int.paas-srepg.bancogalicia.com.ar`). Se usa la variable `API_VIP` y el nombre del cluster definidos en `clusters/<cluster>/env.sh`.
 
 ## Requisitos
 
