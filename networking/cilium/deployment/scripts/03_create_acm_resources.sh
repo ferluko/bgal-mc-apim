@@ -273,14 +273,15 @@ if [[ -f "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 7b. MachineConfigs para api-int en /etc/hosts (master y worker)
+# 7b. MachineConfigs para api-int en /etc/hosts (master y worker) [OPCIONAL]
 # -----------------------------------------------------------------------------
-# Añade la línea api-int.<cluster>.<baseDomain> -> API_VIP en /etc/hosts para
-# que los nodos resuelvan el API interno durante la instalación.
-API_INT_HOSTS_LINE="${API_VIP} api-int.${CLUSTER_NAME}.${BASE_DOMAIN}"
-API_INT_HOSTS_B64=$(printf '%s\n' "${API_INT_HOSTS_LINE}" | base64 | tr -d '\n')
+# Solo si ADD_API_INT_HOSTS_MACHINECONFIGS=true. Añade la línea
+# api-int.<cluster>.<baseDomain> -> API_VIP en /etc/hosts.
+if [[ "${ADD_API_INT_HOSTS_MACHINECONFIGS}" == "true" ]]; then
+    API_INT_HOSTS_LINE="${API_VIP} api-int.${CLUSTER_NAME}.${BASE_DOMAIN}"
+    API_INT_HOSTS_B64=$(printf '%s\n' "${API_INT_HOSTS_LINE}" | base64 | tr -d '\n')
 
-cat > "${CLIFE_EXTRACT_DIR}/99-master-add-api-int-host.yaml" << EOF
+    cat > "${CLIFE_EXTRACT_DIR}/99-master-add-api-int-host.yaml" << EOF
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:
@@ -301,7 +302,7 @@ spec:
           source: data:text/plain;charset=utf-8;base64,${API_INT_HOSTS_B64}
 EOF
 
-cat > "${CLIFE_EXTRACT_DIR}/99-worker-add-api-int-host.yaml" << EOF
+    cat > "${CLIFE_EXTRACT_DIR}/99-worker-add-api-int-host.yaml" << EOF
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:
@@ -322,7 +323,11 @@ spec:
           source: data:text/plain;charset=utf-8;base64,${API_INT_HOSTS_B64}
 EOF
 
-echo "  ✓ MachineConfigs 99-master-add-api-int-host y 99-worker-add-api-int-host generados (api-int -> ${API_VIP})"
+    echo "  ✓ MachineConfigs 99-master-add-api-int-host y 99-worker-add-api-int-host generados (api-int -> ${API_VIP})"
+else
+    rm -f "${CLIFE_EXTRACT_DIR}/99-master-add-api-int-host.yaml" "${CLIFE_EXTRACT_DIR}/99-worker-add-api-int-host.yaml"
+    echo "  ⊘ MachineConfigs api-int en /etc/hosts omitidos (ADD_API_INT_HOSTS_MACHINECONFIGS=false)"
+fi
 
 # Configurar KUBERNETES_SERVICE_HOST/PORT para KPR
 #
