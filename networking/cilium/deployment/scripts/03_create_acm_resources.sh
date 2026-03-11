@@ -272,6 +272,58 @@ if [[ -f "${CLIFE_TMP_DIR}/cluster-network-02-config-local.yml" ]]; then
     echo "  ✓ cluster-network-02-config-local.yml copiado"
 fi
 
+# -----------------------------------------------------------------------------
+# 7b. MachineConfigs para api-int en /etc/hosts (master y worker)
+# -----------------------------------------------------------------------------
+# Añade la línea api-int.<cluster>.<baseDomain> -> API_VIP en /etc/hosts para
+# que los nodos resuelvan el API interno durante la instalación.
+API_INT_HOSTS_LINE="${API_VIP} api-int.${CLUSTER_NAME}.${BASE_DOMAIN}"
+API_INT_HOSTS_B64=$(printf '%s\n' "${API_INT_HOSTS_LINE}" | base64 | tr -d '\n')
+
+cat > "${CLIFE_EXTRACT_DIR}/99-master-add-api-int-host.yaml" << EOF
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: 99-master-add-api-int-host
+  labels:
+    machineconfiguration.openshift.io/role: master
+spec:
+  config:
+    ignition:
+      version: 3.4.0
+    storage:
+      files:
+      - path: /etc/hosts
+        mode: 0644
+        overwrite: false
+        append: true
+        contents:
+          source: data:text/plain;charset=utf-8;base64,${API_INT_HOSTS_B64}
+EOF
+
+cat > "${CLIFE_EXTRACT_DIR}/99-worker-add-api-int-host.yaml" << EOF
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: 99-worker-add-api-int-host
+  labels:
+    machineconfiguration.openshift.io/role: worker
+spec:
+  config:
+    ignition:
+      version: 3.4.0
+    storage:
+      files:
+      - path: /etc/hosts
+        mode: 0644
+        overwrite: false
+        append: true
+        contents:
+          source: data:text/plain;charset=utf-8;base64,${API_INT_HOSTS_B64}
+EOF
+
+echo "  ✓ MachineConfigs 99-master-add-api-int-host y 99-worker-add-api-int-host generados (api-int -> ${API_VIP})"
+
 # Configurar KUBERNETES_SERVICE_HOST/PORT para KPR
 #
 # Cuando KPR (Kube Proxy Replacement) está habilitado, CLife necesita saber
