@@ -196,6 +196,15 @@ Para soportar 15 clusters con Cluster Mesh, el `/14` se divide en 16 subredes `/
 
 Ver [docs/00_subnetting_plan.md](docs/00_subnetting_plan.md) para el plan completo.
 
+## MachineConfigs incluidos
+
+El despliegue genera y aplica automáticamente dos MachineConfig que añaden la entrada de **api-int** en `/etc/hosts` de todos los nodos (master y worker):
+
+- `99-master-add-api-int-host` (rol master)
+- `99-worker-add-api-int-host` (rol worker)
+
+La línea añadida es: `API_VIP api-int.<cluster>.<baseDomain>` (por ejemplo `10.254.124.35 api-int.paas-srepg.bancogalicia.com.ar`). Se usa la variable `API_VIP` y el nombre del cluster definidos en `clusters/<cluster>/env.sh`.
+
 ## Requisitos
 
 - RHACM 2.x desplegado
