@@ -1,0 +1,82 @@
+# vLLM sirviendo GLM-4.7-Flash en OpenShift (1 pod = 1 modelo).
+# GPU: H100 NVL ~94 GB VRAM — ajustado gpu-memory-utilization 0.94.
+# Sustituir <tu-mirror-registry> por el registry interno (ej. mirror.example.com:5000).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-glm-47-flash
+  namespace: vllm-models
+  labels:
+    app: vllm-glm-47-flash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-glm-47-flash
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: vllm-glm-47-flash
+    spec:
+      containers:
+      - name: vllm
+        image: <tu-mirror-registry>/vllm/vllm-openai:latest
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            vllm serve /models/glm-4-7-flash \
+              --served-model-name glm-4-7-flash \
+              --host 0.0.0.0 \
+              --port 8000 \
+              --tensor-parallel-size 1 \
+              --gpu-memory-utilization 0.94 \
+              --max-model-len 131072 \
+              --max-num-batched-tokens 16384 \
+              --enable-chunked-prefill \
+              --enable-prefix-caching \
+              --dtype auto \
+              --trust-remote-code \
+              --tool-call-parser glm47 \
+              --reasoning-parser glm47
+        ports:
+        - containerPort: 8000
+          name: http
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+            cpu: "16"
+            memory: 100Gi
+          requests:
+            nvidia.com/gpu: 1
+            cpu: "8"
+            memory: 60Gi
+        volumeMounts:
+        - name: models
+          mountPath: /models
+        - name: dev-shm
+          mountPath: /dev/shm
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 180
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 300
+          periodSeconds: 30
+      volumes:
+      - name: models
+        persistentVolumeClaim:
+          claimName: glm-4-7-flash-pvc
+      - name: dev-shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+      nodeSelector:
+        nvidia.com/gpu.present: "true"

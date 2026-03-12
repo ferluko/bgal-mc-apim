@@ -1,0 +1,7 @@
+# Namespace para los despliegues vLLM (un modelo por Deployment).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vllm-models
+  labels:
+    openshift.io/cluster-monitoring: "true"

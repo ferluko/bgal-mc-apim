@@ -1,0 +1,23 @@
+# Ejemplo de configuración para Continue.dev en VS Code (Windows).
+# apiBase debe apuntar al API Gateway para IA desplegado en el cluster arqlab
+# (el API GW tiene como backend el servicio vLLM en IBM CDP, expuesto por NodePort).
+#
+# Uso: Ctrl+Shift+P → "Continue: Open config (YAML)" y pegar/ajustar este bloque.
+# Desactivar "Allow Anonymous Telemetry" en la configuración de Continue.
+#
+# Sustituir <api-gw-arqlab-url> por la URL real del API GW en arqlab, ej.:
+#   https://api-gw-ia.arqlab.example.com/v1
+#   https://api-gw-ia-arqlab.apps.cluster-arqlab.example.com/v1
+
+models:
+  - name: GLM-4.7-Flash IaC
+    provider: openai
+    model: glm-4-7-flash
+    apiBase: https://<api-gw-arqlab-url>/v1
+    apiKey: "EMPTY"
+
+# Prompt de sistema recomendado para Terraform + Shell (opcional en Continue):
+# "Eres un ingeniero DevOps senior especializado en Terraform y bash. Genera código
+# idempotente, seguro (sin secrets en claro, least privilege), con módulos
+# reutilizables y scripts bash robustos (set -euo pipefail, traps). Valida sintaxis
+# y lógica. Explica los fixes si hay errores."

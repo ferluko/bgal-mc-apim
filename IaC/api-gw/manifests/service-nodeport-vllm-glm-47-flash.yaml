@@ -1,0 +1,18 @@
+# Service NodePort para vLLM (GLM-4.7-Flash) en IBM CDP.
+# Este endpoint se configura como backend del API Gateway para IA en el cluster arqlab.
+# Opcional: especificar nodePort en el rango 30000-32767 para un puerto fijo.
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-glm-47-flash
+  namespace: vllm-models
+spec:
+  selector:
+    app: vllm-glm-47-flash
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+    # nodePort: 30080   # descomentar y ajustar si se requiere puerto fijo
+  type: NodePort
