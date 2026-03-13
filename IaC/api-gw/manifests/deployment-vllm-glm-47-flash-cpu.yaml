@@ -1,0 +1,107 @@
+# vLLM sirviendo GLM-4.7-Flash en OpenShift SIN GPU (solo CPU).
+# Para probar en un cluster OCP sin nodos con GPU. El modelo usará CPU: arrancará más lento
+# y la inferencia será mucho más lenta, pero el deploy debe levantar.
+#
+# Usa el mismo volumen RWX que model-reconstruct (model-reconstruct-pvc).
+# Namespace test-sre para referenciar el mismo PVC.
+#
+# nodeSelector + tolerations: fijado al nodo infra elastic con recursos (único disponible).
+# Nodo: paas-dev-7dj4l-infra-elastic-3-qk5cq (taint node-type=elastic:NoSchedule).
+#
+# IMPORTANTE - Imagen para CPU:
+#   docker.io/vllm/vllm-openai es solo CUDA (requiere libcuda.so.1) y FALLA en nodos sin GPU.
+#   Hay que usar una imagen de vLLM construida para CPU, ej.:
+#     - Build propio: VLLM_TARGET_DEVICE=cpu en el Dockerfile (ver docs vLLM CPU).
+#     - O la que tengáis en Quay/registry (ej. quay.io/<org>/vllm-openai-cpu:latest).
+#   Sustituir el campo 'image' por esa imagen y, si es privada, usar imagePullSecrets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-glm-47-flash-cpu
+  namespace: test-sre
+  labels:
+    app: vllm-glm-47-flash-cpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-glm-47-flash-cpu
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: vllm-glm-47-flash-cpu
+    spec:
+      tolerations:
+        - key: node-type
+          operator: Equal
+          value: elastic
+          effect: NoSchedule
+      nodeSelector:
+        kubernetes.io/hostname: paas-dev-7dj4l-infra-elastic-3-qk5cq
+      # imagePullSecrets solo si usas Quay/registry privado.
+      # imagePullSecrets:
+      #   - name: quay-pull-secret
+      containers:
+      - name: vllm
+        # Sustituir por imagen vLLM construida con VLLM_TARGET_DEVICE=cpu (la de docker.io es solo CUDA).
+        image: docker.io/vllm/vllm-openai:latest
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: VLLM_LOGGING_LEVEL
+            value: "DEBUG"
+          # Necesario si la imagen soporta CPU; la oficial docker.io no lo hace (está enlazada a CUDA).
+          - name: VLLM_TARGET_DEVICE
+            value: "cpu"
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            vllm serve /models/model-reconstructed \
+              --served-model-name glm-4-7-flash \
+              --host 0.0.0.0 \
+              --port 8000 \
+              --tensor-parallel-size 1 \
+              --max-model-len 8192 \
+              --max-num-batched-tokens 2048 \
+              --dtype auto \
+              --trust-remote-code \
+              --tool-call-parser glm47 \
+              --reasoning-parser glm47
+        ports:
+        - containerPort: 8000
+          name: http
+        # Recursos bajos para caber en el nodo elastic (suele tener carga); irá lento en CPU.
+        resources:
+          limits:
+            cpu: "4"
+            memory: 24Gi
+          requests:
+            cpu: "1"
+            memory: 12Gi
+        volumeMounts:
+        - name: models
+          mountPath: /models
+        - name: dev-shm
+          mountPath: /dev/shm
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 600
+          periodSeconds: 15
+          timeoutSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 900
+          periodSeconds: 60
+      volumes:
+      - name: models
+        persistentVolumeClaim:
+          claimName: model-reconstruct-pvc
+      - name: dev-shm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 4Gi

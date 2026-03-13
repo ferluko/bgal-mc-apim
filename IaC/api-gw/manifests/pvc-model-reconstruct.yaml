@@ -1,0 +1,13 @@
+# PVC 100Gi para la salida del script de reconstrucción. CephFS (RWX) para montaje desde varios pods.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: model-reconstruct-pvc
+  namespace: test-sre
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: ocs-storagecluster-cephfs

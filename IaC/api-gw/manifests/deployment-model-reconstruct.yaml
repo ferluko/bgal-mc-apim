@@ -1,0 +1,64 @@
+# Pod con imagen UBI+podman para ejecutar el script de reconstrucción (sin salida a internet;
+# no se instalan paquetes). Monta el script (ConfigMap) y un PV de 100Gi en /data.
+# En airgapped: usar la misma imagen desde el registry interno (mirror de registry.redhat.io).
+# Ejecutar con 'bash' (el ConfigMap es read-only, no se puede chmod +x), p. ej.:
+#   kubectl exec -it deployment/model-reconstruct -n test-sre -- bash /scripts/reconstruct-model-airgapped.sh \
+#     --output-dir /data/model-reconstructed --pull quay.io/redhat_dti/ovn-cni
+# Imagen: UBI9 con podman (incluye jq). Sin red: reemplazar por <registry-interno>/ubi9/podman.
+# Podman necesita root y privilegios (privileged). Un admin debe conceder la SCC al SA:
+#   oc adm policy add-scc-to-user privileged -z default -n test-sre
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-reconstruct
+  namespace: test-sre
+  labels:
+    app: model-reconstruct
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-reconstruct
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: model-reconstruct
+    spec:
+      securityContext:
+        runAsUser: 0
+        runAsNonRoot: false
+      containers:
+      - name: reconstruct
+        image: registry.redhat.io/ubi9/podman:latest
+        securityContext:
+          privileged: true
+        env:
+        - name: HOME
+          value: /tmp
+        command:
+        - /bin/bash
+        - -c
+        - exec sleep infinity
+        resources:
+          requests:
+            cpu: "100m"
+            memory: 256Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+          readOnly: true
+        - name: data
+          mountPath: /data
+      volumes:
+      - name: script
+        configMap:
+          name: reconstruct-model-script
+          defaultMode: 0644
+      - name: data
+        persistentVolumeClaim:
+          claimName: model-reconstruct-pvc

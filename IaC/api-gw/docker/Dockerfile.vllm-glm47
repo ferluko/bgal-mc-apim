@@ -1,0 +1,7 @@
+# vLLM con transformers>=5.0.0 para GLM-4.7-Flash (glm4_moe_lite).
+# La imagen base vllm-openai:0.17.x trae transformers 4.x y no reconoce glm4_moe_lite.
+# Build: podman build -f docker/Dockerfile.vllm-glm47 -t quay.io/<org>/vllm-openai:glm47 .
+FROM docker.io/vllm/vllm-openai:latest
+USER root
+RUN pip install --no-cache-dir 'transformers>=5.0.0'
+USER vllm

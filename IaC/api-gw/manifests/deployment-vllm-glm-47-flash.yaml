@@ -1,11 +1,27 @@
 # vLLM sirviendo GLM-4.7-Flash en OpenShift (1 pod = 1 modelo).
-# GPU: H100 NVL ~94 GB VRAM — ajustado gpu-memory-utilization 0.94.
-# Sustituir <tu-mirror-registry> por el registry interno (ej. mirror.example.com:5000).
+# GPU: 2x MIG 3g.47gb (~94 GB VRAM total) con tensor-parallel-size 2; gpu-memory-utilization 0.94.
+#
+# Usa el mismo volumen RWX que model-reconstruct (model-reconstruct-pvc, CephFS)
+# para servir el modelo reconstruido por ese job (--output-dir /data/model-reconstructed).
+# Namespace test-sre para poder referenciar el mismo PVC.
+#
+# nodeSelector: fijado al worker con H100 NVL (paas-cpdlab-ljhkh-worker-0-95b6h).
+# Para cualquier nodo con GPU usar: nvidia.com/gpu.present: "true"
+#
+# Modelo: el checkpoint en /models/model-reconstructed es GLM-4.7-Flash (model_type glm4_moe_lite).
+# La imagen debe incluir transformers>=5.0.0 para que Transformers reconozca glm4_moe_lite; vLLM 0.17.x
+# suele traer transformers 4.x y falla con "Transformers does not recognize this architecture".
+# Solución: usar imagen con transformers>=5.0.0; ver docker/Dockerfile.vllm-glm47 para build custom.
+#
+# Imagen: usar la que exista en tu entorno (con transformers>=5.0.0 para GLM-4.7-Flash):
+#   - Docker Hub (por defecto): docker.io/vllm/vllm-openai:latest (comprobar con scripts/check-vllm-image-transformers.sh)
+#   - Quay:                    quay.io/<tu-org>/vllm-openai:latest
+#   - Registry espejo/mirror:   <mirror>/vllm/vllm-openai:latest
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vllm-glm-47-flash
-  namespace: vllm-models
+  namespace: test-sre
   labels:
     app: vllm-glm-47-flash
 spec:
@@ -20,17 +36,22 @@ spec:
       labels:
         app: vllm-glm-47-flash
     spec:
+      # imagePullSecrets solo si usas Quay/registry privado (ej. quay-pull-secret).
+      # imagePullSecrets:
+      #   - name: quay-pull-secret
       containers:
       - name: vllm
-        image: <tu-mirror-registry>/vllm/vllm-openai:latest
+        # Cambiar por quay.io/... o <mirror>/... según dónde esté la imagen.
+        image: docker.io/vllm/vllm-openai:latest
+        imagePullPolicy: IfNotPresent
         command: ["/bin/sh", "-c"]
         args:
           - |
-            vllm serve /models/glm-4-7-flash \
+            vllm serve /models/model-reconstructed \
               --served-model-name glm-4-7-flash \
               --host 0.0.0.0 \
               --port 8000 \
-              --tensor-parallel-size 1 \
+              --tensor-parallel-size 2 \
               --gpu-memory-utilization 0.94 \
               --max-model-len 131072 \
               --max-num-batched-tokens 16384 \
@@ -45,13 +66,13 @@ spec:
           name: http
         resources:
           limits:
-            nvidia.com/gpu: 1
-            cpu: "16"
-            memory: 100Gi
+            nvidia.com/gpu: 2
+            cpu: "32"
+            memory: 120Gi
           requests:
-            nvidia.com/gpu: 1
-            cpu: "8"
-            memory: 60Gi
+            nvidia.com/gpu: 2
+            cpu: "16"
+            memory: 80Gi
         volumeMounts:
         - name: models
           mountPath: /models
@@ -73,10 +94,10 @@ spec:
       volumes:
       - name: models
         persistentVolumeClaim:
-          claimName: glm-4-7-flash-pvc
+          claimName: model-reconstruct-pvc
       - name: dev-shm
         emptyDir:
           medium: Memory
           sizeLimit: 16Gi
       nodeSelector:
-        nvidia.com/gpu.present: "true"
+        kubernetes.io/hostname: paas-cpdlab-ljhkh-worker-0-95b6h

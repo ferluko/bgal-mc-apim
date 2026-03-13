@@ -1,14 +1,14 @@
-# PVC para pesos del modelo GLM-4.7-Flash (carga por sneakernet/USB en air-gapped).
-# Ajustar storageClassName según el cluster (VMware: thin, gp3-csi, etc.).
+# PVC para pesos del modelo GLM-4.7-Flash (opcional; vllm-glm-47-flash usa model-reconstruct-pvc).
+# Mismo esquema RWX (CephFS) que model-reconstruct-pvc por si se usa un PVC dedicado.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: glm-4-7-flash-pvc
-  namespace: vllm-models
+  namespace: test-sre
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 100Gi
-  storageClassName: ""   # rellenar: thin, gp3-csi, o la StorageClass del cluster
+  storageClassName: ocs-storagecluster-cephfs
