@@ -1,0 +1,47 @@
+# =============================================================================
+# Inventario lab multicluster F5 LTM/GTM — srepg + arqlab
+# Completar variables de grupo (f5_*_ip, credenciales) en group_vars o en línea.
+# Uso: ansible-playbook -i inventory.yml playbook-discovery.yml
+# =============================================================================
+
+all:
+  children:
+    clusters:
+      hosts:
+        paas_arqlab:
+          ansible_host: api.paas-arqlab.bancogalicia.com.ar
+          cluster_name: paas-arqlab
+          api_vip: 10.254.124.35
+          ingress_vip: 10.254.124.36
+          base_domain: bancogalicia.com.ar
+        paas_srepg:
+          ansible_host: api.paas-srepg.bancogalicia.com.ar
+          cluster_name: paas-srepg
+          api_vip: 10.254.124.10
+          ingress_vip: 10.254.124.11
+          base_domain: bancogalicia.com.ar
+      vars:
+        ansible_connection: local
+        # kubeconfig: definir en group_vars o export KUBECONFIG antes de ejecutar
+
+    f5_ltm:
+      hosts:
+        f5_ltm_arqlab:
+          f5_host: "{{ f5_ltm_arqlab_ip | default('127.0.0.1') }}"
+          f5_partition: Common
+          cluster_ref: paas-arqlab
+        f5_ltm_srepg:
+          f5_host: "{{ f5_ltm_srepg_ip | default('127.0.0.1') }}"
+          f5_partition: Common
+          cluster_ref: paas-srepg
+      vars:
+        ansible_connection: local
+        # f5_ltm_arqlab_ip, f5_ltm_srepg_ip en group_vars/all.yml o extra vars
+        # f5_user, f5_password o f5_token para autenticación
+
+    f5_gtm:
+      hosts:
+        f5_gtm_global:
+          f5_host: "{{ f5_gtm_ip | default('127.0.0.1') }}"
+      vars:
+        ansible_connection: local

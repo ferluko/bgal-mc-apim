@@ -1,0 +1,5 @@
+# Salida de discovery (puede contener datos sensibles)
+output/
+
+# Credenciales (usar all.yml.example como plantilla)
+ansible/group_vars/all.yml

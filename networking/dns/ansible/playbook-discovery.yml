@@ -1,0 +1,129 @@
+---
+# =============================================================================
+# Playbook discovery: clusters OpenShift + F5 LTM/GTM
+# Requiere: ansible-core, community.kubernetes (o kubernetes.core), f5networks.f5_modules
+# Instalar colecciones:
+#   ansible-galaxy collection install community.kubernetes
+#   ansible-galaxy collection install f5networks.f5_modules
+# Ejecutar: ansible-playbook -i inventory.yml playbook-discovery.yml -e @group_vars/all.yml
+# =============================================================================
+
+# Para varios clusters: definir kubeconfig_path por host (host_vars) o ejecutar
+# con KUBECONFIG apuntando al contexto deseado por ejecución.
+- name: Discovery clusters OpenShift (srepg, arqlab)
+  hosts: clusters
+  gather_facts: true
+  tasks:
+    - name: Obtener versión OpenShift (oc)
+      ansible.builtin.shell: |
+        oc version 2>/dev/null || echo "oc no disponible"
+      register: oc_version
+      changed_when: false
+      ignore_errors: true
+
+    - name: Mostrar versión oc
+      ansible.builtin.debug:
+        var: oc_version.stdout_lines
+      when: oc_version.rc == 0
+
+    - name: Listar ingresscontrollers
+      community.kubernetes.k8s_info:
+        kind: IngressController
+        namespace: openshift-ingress-operator
+        kubeconfig: "{{ kubeconfig_path | default(omit) }}"
+      register: ic_list
+      ignore_errors: true
+
+    - name: Mostrar IngressControllers
+      ansible.builtin.debug:
+        var: ic_list.resources
+      when: ic_list.resources is defined
+
+    - name: Listar routes (todos los namespaces)
+      community.kubernetes.k8s_info:
+        kind: Route
+        api_version: route.openshift.io/v1
+      register: routes_list
+      ignore_errors: true
+
+    - name: Mostrar rutas
+      ansible.builtin.debug:
+        var: routes_list.resources
+      when: routes_list.resources is defined
+
+- name: Discovery F5 LTM (virtual servers, pools, monitors)
+  hosts: f5_ltm
+  gather_facts: false
+  tasks:
+    - name: Obtener virtual servers vía iControl REST
+      ansible.builtin.uri:
+        url: "https://{{ f5_host }}/mgmt/tm/ltm/virtual"
+        method: GET
+        user: "{{ f5_user | default(omit) }}"
+        password: "{{ f5_password | default(omit) }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: f5_virtual
+      ignore_errors: true
+      when: f5_user is defined and f5_password is defined
+
+    - name: Registrar virtual servers
+      ansible.builtin.set_fact:
+        f5_virtual_servers: "{{ (f5_virtual.json.items | default([])) | map(attribute='fullPath') | list }}"
+      when: f5_virtual.json is defined and f5_virtual.json.items is defined
+
+    - name: Mostrar virtual servers
+      ansible.builtin.debug:
+        var: f5_virtual_servers
+      when: f5_virtual_servers is defined
+
+    - name: Obtener pools vía iControl REST
+      ansible.builtin.uri:
+        url: "https://{{ f5_host }}/mgmt/tm/ltm/pool"
+        method: GET
+        user: "{{ f5_user | default(omit) }}"
+        password: "{{ f5_password | default(omit) }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: f5_pools
+      ignore_errors: true
+      when: f5_user is defined and f5_password is defined
+
+    - name: Registrar pools
+      ansible.builtin.set_fact:
+        f5_pools_list: "{{ (f5_pools.json.items | default([])) | map(attribute='fullPath') | list }}"
+      when: f5_pools.json is defined and f5_pools.json.items is defined
+
+    - name: Mostrar pools
+      ansible.builtin.debug:
+        var: f5_pools_list
+      when: f5_pools_list is defined
+
+- name: Discovery F5 GTM
+  hosts: f5_gtm
+  gather_facts: false
+  tasks:
+    - name: Comprobar si GTM está disponible
+      ansible.builtin.uri:
+        url: "https://{{ f5_host }}/mgmt/tm/gtm/wideip"
+        method: GET
+        user: "{{ f5_user | default(omit) }}"
+        password: "{{ f5_password | default(omit) }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: f5_wideip
+      ignore_errors: true
+      when: f5_user is defined and f5_password is defined
+
+    - name: Registrar wide IPs
+      ansible.builtin.set_fact:
+        f5_wide_ips: "{{ (f5_wideip.json.items | default([])) | map(attribute='fullPath') | list }}"
+      when: f5_wideip.json is defined and f5_wideip.json.items is defined
+
+    - name: Mostrar wide IPs GTM
+      ansible.builtin.debug:
+        var: f5_wide_ips
+      when: f5_wide_ips is defined

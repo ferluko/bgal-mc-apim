@@ -1,0 +1,59 @@
+---
+# =============================================================================
+# Playbook configuración F5 LTM/GTM — invocado por deploy.sh config-f5 (05_run_ansible.sh)
+# Añadir tareas con módulos f5networks.f5_modules (bigip_virtual_server, bigip_pool, etc.).
+# Ejemplo: crear/actualizar virtual server, pool y monitor por cluster.
+# =============================================================================
+
+- name: Configuración F5 LTM (virtual servers, pools, monitors)
+  hosts: f5_ltm
+  gather_facts: false
+  tasks:
+    - name: Comprobar conectividad F5
+      ansible.builtin.uri:
+        url: "https://{{ f5_host }}/mgmt/tm/ltm/virtual"
+        method: GET
+        user: "{{ f5_user | default(omit) }}"
+        password: "{{ f5_password | default(omit) }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [200]
+      register: f5_check
+      ignore_errors: true
+      when: f5_user is defined and f5_password is defined
+
+    - name: Mostrar estado F5
+      ansible.builtin.debug:
+        msg: "F5 {{ f5_host }} ({{ cluster_ref }}): conectividad OK"
+      when: f5_check is succeeded
+
+    # Añadir aquí tareas de configuración con f5networks.f5_modules, por ejemplo:
+    # - name: Crear pool para ingress cluster
+    #   f5networks.f5_modules.bigip_pool:
+    #     name: "pool-{{ cluster_ref }}-ingress"
+    #     ...
+    # - name: Crear virtual server
+    #   f5networks.f5_modules.bigip_virtual_server:
+    #     name: "vs-{{ cluster_ref }}-https"
+    #     ...
+
+- name: Configuración F5 GTM (wide IPs, pools)
+  hosts: f5_gtm
+  gather_facts: false
+  tasks:
+    - name: Comprobar módulo GTM
+      ansible.builtin.uri:
+        url: "https://{{ f5_host }}/mgmt/tm/gtm/wideip"
+        method: GET
+        user: "{{ f5_user | default(omit) }}"
+        password: "{{ f5_password | default(omit) }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: gtm_check
+      ignore_errors: true
+      when: f5_user is defined and f5_password is defined
+
+    - name: GTM disponible
+      ansible.builtin.debug:
+        msg: "GTM en {{ f5_host }}: disponible"
+      when: gtm_check is succeeded

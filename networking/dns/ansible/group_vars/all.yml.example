@@ -1,0 +1,18 @@
+# Copiar a group_vars/all.yml y completar con valores reales.
+# No versionar all.yml con credenciales.
+
+# Clusters (oc/kubectl debe poder conectar)
+# kubeconfig_path: "~/.kube/config"   # o por cluster
+
+# F5 LTM por site/cluster
+f5_ltm_arqlab_ip: "10.0.0.1"
+f5_ltm_srepg_ip: "10.0.0.2"
+f5_gtm_ip: "10.0.0.0"
+
+# F5 auth (usar vault en producción)
+f5_user: "admin"
+f5_password: "secret"
+# f5_token: "..."   # alternativo a user/password
+
+# Base domain (ya definido en inventario por host)
+base_domain: "bancogalicia.com.ar"

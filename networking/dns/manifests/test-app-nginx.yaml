@@ -1,0 +1,78 @@
+# =============================================================================
+# App de prueba para validar route local, LTM y GTM (Fase 7)
+# Aplicar en ambos clusters: paas-arqlab y paas-srepg
+# Uso: oc apply -f test-app-nginx.yaml
+#      Ajustar namespace y host del Route según cluster (ej. lab-demo.apps.paas-arqlab.bancogalicia.com.ar)
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-demo
+  labels:
+    app.kubernetes.io/name: lab-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: lab-demo
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: quay.io/openshift/origin-nginx:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: lab-demo
+  labels:
+    app: nginx
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: nginx
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: nginx
+  namespace: lab-demo
+  labels:
+    app: nginx
+spec:
+  to:
+    kind: Service
+    name: nginx
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+  # Ajustar host según cluster, ej.:
+  # paas-arqlab: lab-demo.apps.paas-arqlab.bancogalicia.com.ar
+  # paas-srepg:  lab-demo.apps.paas-srepg.bancogalicia.com.ar
+  # host: lab-demo.apps.CLUSTER_NAME.bancogalicia.com.ar
+  wildcardPolicy: None
