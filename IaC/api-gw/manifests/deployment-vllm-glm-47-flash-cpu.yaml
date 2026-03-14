@@ -45,15 +45,8 @@ spec:
       #   - name: quay-pull-secret
       containers:
       - name: vllm
-        # Sustituir por imagen vLLM construida con VLLM_TARGET_DEVICE=cpu (la de docker.io es solo CUDA).
         image: docker.io/vllm/vllm-openai:latest
         imagePullPolicy: IfNotPresent
-        env:
-          - name: VLLM_LOGGING_LEVEL
-            value: "DEBUG"
-          # Necesario si la imagen soporta CPU; la oficial docker.io no lo hace (está enlazada a CUDA).
-          - name: VLLM_TARGET_DEVICE
-            value: "cpu"
         command: ["/bin/sh", "-c"]
         args:
           - |
