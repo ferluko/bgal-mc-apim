@@ -1,0 +1,4 @@
+# Credenciales — NUNCA commitear
+drp/00_credentials.env
+drp/reports/
+/tmp/kubeconfig-prd*
